@@ -135,13 +135,21 @@ export const handler: Handler = async () => {
     await db.insert(tides).values(tideRows).onConflictDoNothing();
 
     // --- 3. Append metadata audit row --------------------------------------
+    // meta.start / meta.end arrive as 'YYYY-MM-DD HH:MM' (no T separator,
+    // no timezone indicator).  Appending 'T' and 'Z' makes them valid
+    // ISO 8601 UTC strings so that Date.parse() gives a reliable result.
+    // The result is then converted to Unix epoch seconds (integer) to match
+    // the bigint column type that request_start / request_end now use.
+    const toUnixSeconds = (stormglassTimestamp: string): number =>
+      Math.floor(new Date(stormglassTimestamp.replace(' ', 'T') + 'Z').getTime() / 1000);
+
     await db.insert(metadata).values({
       source:        'tides',
       cost:          String(meta.cost),
-      request_start: meta.start,
+      request_start: toUnixSeconds(meta.start),
       daily_quota:   String(meta.dailyQuota),
       datum:         meta.datum,
-      request_end:   meta.end,
+      request_end:   toUnixSeconds(meta.end),
       offset:        String(meta.offset),
       request_count: String(meta.requestCount),
       station_lat:   String(meta.station.lat),

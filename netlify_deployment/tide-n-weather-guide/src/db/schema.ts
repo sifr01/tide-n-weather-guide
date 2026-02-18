@@ -125,12 +125,12 @@ export const metadata = pgTable('metadata', {
 
     // --- common fields (present in all three endpoints) --------------------
     cost:             numeric({ precision: 10, scale: 0 }),    // source: meta.cost
-    request_start:    varchar({ length: 50 }),                 // source: meta.start  (ISO-like string "YYYY-MM-DD HH:MM")
+    request_start:    bigint({ mode: 'number' }),              // source: meta.start  (Unix epoch seconds, converted from "YYYY-MM-DD HH:MM" UTC)
 
     // --- tides-only fields -------------------------------------------------
     daily_quota:      numeric({ precision: 10, scale: 0 }),    // source: meta.dailyQuota
     datum:            varchar({ length: 50 }),                 // source: meta.datum  (e.g. "MSL")
-    request_end:      varchar({ length: 50 }),                 // source: meta.end
+    request_end:      bigint({ mode: 'number' }),              // source: meta.end    (Unix epoch seconds, converted from "YYYY-MM-DD HH:MM" UTC)
     offset:           numeric({ precision: 5, scale: 0 }),     // source: meta.offset (UTC offset hours)
     request_count:    numeric({ precision: 10, scale: 0 }),    // source: meta.requestCount
 
