@@ -1,5 +1,5 @@
 {
-  "id": "6c7d98e5-e190-4e24-9708-286627b76977",
+  "id": "531c2baf-07e5-4468-a2f1-a31937be2ec1",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -34,13 +34,13 @@
         },
         "cost": {
           "name": "cost",
-          "type": "numeric(10, 0)",
+          "type": "numeric(10, 4)",
           "primaryKey": false,
           "notNull": false
         },
         "request_start": {
           "name": "request_start",
-          "type": "bigint",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false
         },
@@ -58,7 +58,7 @@
         },
         "request_end": {
           "name": "request_end",
-          "type": "bigint",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": false
         },
@@ -76,13 +76,13 @@
         },
         "station_lat": {
           "name": "station_lat",
-          "type": "numeric(9, 3)",
+          "type": "numeric(9, 6)",
           "primaryKey": false,
           "notNull": false
         },
         "station_lon": {
           "name": "station_lon",
-          "type": "numeric(9, 3)",
+          "type": "numeric(9, 6)",
           "primaryKey": false,
           "notNull": false
         },
