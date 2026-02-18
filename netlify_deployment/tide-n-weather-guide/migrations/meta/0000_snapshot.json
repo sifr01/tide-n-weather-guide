@@ -1,5 +1,5 @@
 {
-  "id": "6c7d98e5-e190-4e24-9708-286627b76977",
+  "id": "89cd6a04-1514-4932-bff9-2437432c581d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -34,7 +34,7 @@
         },
         "cost": {
           "name": "cost",
-          "type": "numeric(10, 0)",
+          "type": "numeric(2, 0)",
           "primaryKey": false,
           "notNull": false
         },
@@ -46,7 +46,7 @@
         },
         "daily_quota": {
           "name": "daily_quota",
-          "type": "numeric(10, 0)",
+          "type": "numeric(5, 0)",
           "primaryKey": false,
           "notNull": false
         },
@@ -70,19 +70,19 @@
         },
         "request_count": {
           "name": "request_count",
-          "type": "numeric(10, 0)",
+          "type": "numeric(5, 0)",
           "primaryKey": false,
           "notNull": false
         },
         "station_lat": {
           "name": "station_lat",
-          "type": "numeric(9, 3)",
+          "type": "numeric(6, 3)",
           "primaryKey": false,
           "notNull": false
         },
         "station_lon": {
           "name": "station_lon",
-          "type": "numeric(9, 3)",
+          "type": "numeric(6, 3)",
           "primaryKey": false,
           "notNull": false
         },
@@ -125,7 +125,7 @@
         },
         "height": {
           "name": "height",
-          "type": "numeric(7, 4)",
+          "type": "numeric(18, 15)",
           "primaryKey": false,
           "notNull": true
         },
@@ -157,163 +157,163 @@
         },
         "gust_ecmwf": {
           "name": "gust_ecmwf",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "gust_noaa": {
           "name": "gust_noaa",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "gust_sg": {
           "name": "gust_sg",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "pressure_ecmwf": {
           "name": "pressure_ecmwf",
-          "type": "real",
+          "type": "numeric(6, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "pressure_ecmwf_aifs": {
           "name": "pressure_ecmwf_aifs",
-          "type": "real",
+          "type": "numeric(6, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "pressure_noaa": {
           "name": "pressure_noaa",
-          "type": "real",
+          "type": "numeric(6, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "pressure_sg": {
           "name": "pressure_sg",
-          "type": "real",
+          "type": "numeric(6, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "water_temp_meto": {
           "name": "water_temp_meto",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "water_temp_noaa": {
           "name": "water_temp_noaa",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "water_temp_sg": {
           "name": "water_temp_sg",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wave_height_dwd": {
           "name": "wave_height_dwd",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wave_height_ecmwf": {
           "name": "wave_height_ecmwf",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wave_height_meteo": {
           "name": "wave_height_meteo",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wave_height_noaa": {
           "name": "wave_height_noaa",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wave_height_sg": {
           "name": "wave_height_sg",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_dir_dwd": {
           "name": "wind_dir_dwd",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_dir_ecmwf": {
           "name": "wind_dir_ecmwf",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_dir_ecmwf_aifs": {
           "name": "wind_dir_ecmwf_aifs",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_dir_noaa": {
           "name": "wind_dir_noaa",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_dir_sg": {
           "name": "wind_dir_sg",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_speed_dwd": {
           "name": "wind_speed_dwd",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_speed_ecmwf": {
           "name": "wind_speed_ecmwf",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_speed_ecmwf_aifs": {
           "name": "wind_speed_ecmwf_aifs",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_speed_noaa": {
           "name": "wind_speed_noaa",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "wind_speed_sg": {
           "name": "wind_speed_sg",
-          "type": "real",
+          "type": "numeric(5, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "uv_index_noaa": {
           "name": "uv_index_noaa",
-          "type": "real",
+          "type": "numeric(4, 2)",
           "primaryKey": false,
           "notNull": false
         },
         "uv_index_sg": {
           "name": "uv_index_sg",
-          "type": "real",
+          "type": "numeric(4, 2)",
           "primaryKey": false,
           "notNull": false
         }
