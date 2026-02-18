@@ -58,64 +58,63 @@ Solar data is **merged into the `weather` table** on the `time` primary key, bec
 
 ## ERD Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                          tide-n-weather-guide DB                                │
-│                                                                                 │
-│  ┌──────────────────────┐    ┌──────────────────────────────────────────────┐   │
-│  │        tides         │    │                   weather                    │   │
-│  ├──────────────────────┤    ├──────────────────────────────────────────────┤   │
-│  │ time  BIGINT  PK     │    │ time              BIGINT  PK                 │   │
-│  │ height NUMERIC(7,4)  │    │ gust_ecmwf        REAL                      │   │
-│  │ type  tide_type ENUM │    │ gust_noaa         REAL                      │   │
-│  └──────────────────────┘    │ gust_sg           REAL                      │   │
-│                              │ pressure_ecmwf    REAL                      │   │
-│                              │ pressure_ecmwf_aifs REAL                    │   │
-│                              │ pressure_noaa     REAL                      │   │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │   │
-│  │                         metadata                                     │   │   │
-│  ├──────────────────────────────────────────────────────────────────────┤   │   │
-│  │ id             BIGINT  PK  GENERATED ALWAYS AS IDENTITY              │   │   │
-│  │ source         meta_source ENUM  ('tides'|'weather'|'solar')         │   │   │
-│  │ cost           NUMERIC(10,4)                                         │   │   │
-│  │ request_start  VARCHAR(50)                                           │   │   │
-│  │ daily_quota    NUMERIC(10,0)   ← tides only                         │   │   │
-│  │ datum          VARCHAR(50)     ← tides only                         │   │   │
-│  │ request_end    VARCHAR(50)     ← tides only                         │   │   │
-│  │ offset         NUMERIC(5,0)    ← tides only                         │   │   │
-│  │ request_count  NUMERIC(10,0)   ← tides only                         │   │   │
-│  │ station_lat    NUMERIC(9,6)    ← tides only                         │   │   │
-│  │ station_lon    NUMERIC(9,6)    ← tides only                         │   │   │
-│  │ station_name   VARCHAR(255)    ← tides only                         │   │   │
-│  │ station_source VARCHAR(100)    ← tides only                         │   │   │
-│  │ parameters     TEXT            ← weather/solar only                 │   │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │   │
-│              │ pressure_sg      REAL                      │               │   │
-│              │ water_temp_meto  REAL                      │               │   │
-│              │ water_temp_noaa  REAL                      │               │   │
-│              │ water_temp_sg    REAL                      │               │   │
-│              │ wave_height_dwd  REAL    ─────────────────┘               │   │
-│              │ wave_height_ecmwf REAL                                    │   │
-│              │ wave_height_meteo REAL                                    │   │
-│              │ wave_height_noaa  REAL                                    │   │
-│              │ wave_height_sg    REAL                                    │   │
-│              │ wind_dir_dwd      REAL                                    │   │
-│              │ wind_dir_ecmwf    REAL                                    │   │
-│              │ wind_dir_ecmwf_aifs REAL                                  │   │
-│              │ wind_dir_noaa     REAL                                    │   │
-│              │ wind_dir_sg       REAL                                    │   │
-│              │ wind_speed_dwd    REAL                                    │   │
-│              │ wind_speed_ecmwf  REAL                                    │   │
-│              │ wind_speed_ecmwf_aifs REAL                                │   │
-│              │ wind_speed_noaa   REAL                                    │   │
-│              │ wind_speed_sg     REAL                                    │   │
-│              │ uv_index_noaa     REAL   ← from solar endpoint            │   │
-│              │ uv_index_sg       REAL   ← from solar endpoint            │   │
-│              └──────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+erDiagram
+      TIDES {
+            BIGINT time PK "Unix epoch sec"
+            NUMERIC height "numeric(7,4)"
+            tide_type type
+      }
 
-Note: tides and weather have no FK relationship with metadata.
-      metadata is an independent audit log keyed by source enum + id.
+      WEATHER {
+            BIGINT time PK "Unix epoch sec"
+            REAL gust_ecmwf
+            REAL gust_noaa
+            REAL gust_sg
+            REAL pressure_ecmwf
+            REAL pressure_ecmwf_aifs
+            REAL pressure_noaa
+            REAL pressure_sg
+            REAL water_temp_meto
+            REAL water_temp_noaa
+            REAL water_temp_sg
+            REAL wave_height_dwd
+            REAL wave_height_ecmwf
+            REAL wave_height_meteo
+            REAL wave_height_noaa
+            REAL wave_height_sg
+            REAL wind_dir_dwd
+            REAL wind_dir_ecmwf
+            REAL wind_dir_ecmwf_aifs
+            REAL wind_dir_noaa
+            REAL wind_dir_sg
+            REAL wind_speed_dwd
+            REAL wind_speed_ecmwf
+            REAL wind_speed_ecmwf_aifs
+            REAL wind_speed_noaa
+            REAL wind_speed_sg
+            REAL uv_index_noaa
+            REAL uv_index_sg
+      }
+
+      METADATA {
+            BIGINT id PK "identity"
+            meta_source source
+            NUMERIC cost
+            VARCHAR request_start
+            NUMERIC daily_quota
+            VARCHAR datum
+            VARCHAR request_end
+            NUMERIC offset
+            NUMERIC request_count
+            NUMERIC station_lat
+            NUMERIC station_lon
+            VARCHAR station_name
+            VARCHAR station_source
+            TEXT parameters
+      }
+
+      %% No FK relationships — metadata is an audit log
 ```
 
 ---
