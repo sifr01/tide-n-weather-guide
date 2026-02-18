@@ -1,4 +1,4 @@
-import { bigint, numeric, pgEnum, pgTable, real, text, varchar } from 'drizzle-orm/pg-core';
+import { bigint, numeric, pgEnum, pgTable, text, varchar } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -30,7 +30,7 @@ export const metaSourceEnum = pgEnum('meta_source', ['tides', 'weather', 'solar'
  */
 export const tides = pgTable('tides', {
     time:   bigint({ mode: 'number' }).primaryKey(),            // Unix epoch seconds – source: data[].time
-    height: numeric({ precision: 7, scale: 4 }).notNull(),      // metres, negative for low water – source: data[].height
+    height: numeric({ precision: 18, scale: 15 }).notNull(),      // metres, negative for low water – source: data[].height
     type:   tideTypeEnum().notNull()                            // 'high' | 'low' – source: data[].type
 });
 
@@ -57,45 +57,45 @@ export const weather = pgTable('weather', {
     time:                    bigint({ mode: 'number' }).primaryKey(), // Unix epoch seconds – source: hours[].time
 
     // --- gust (m/s) --------------------------------------------------------
-    gust_ecmwf:              real(),    // source: hours[].gust.ecmwf
-    gust_noaa:               real(),    // source: hours[].gust.noaa
-    gust_sg:                 real(),    // source: hours[].gust.sg
+    gust_ecmwf:              numeric({ precision: 5, scale: 2 }),    // source: hours[].gust.ecmwf
+    gust_noaa:               numeric({ precision: 5, scale: 2 }),    // source: hours[].gust.noaa
+    gust_sg:                 numeric({ precision: 5, scale: 2 }),    // source: hours[].gust.sg
 
     // --- pressure (hPa) ----------------------------------------------------
-    pressure_ecmwf:          real(),    // source: hours[].pressure.ecmwf
-    pressure_ecmwf_aifs:     real(),    // source: hours[].pressure['ecmwf:aifs']
-    pressure_noaa:           real(),    // source: hours[].pressure.noaa
-    pressure_sg:             real(),    // source: hours[].pressure.sg
+    pressure_ecmwf:          numeric({ precision: 6, scale: 2 }),    // source: hours[].pressure.ecmwf
+    pressure_ecmwf_aifs:     numeric({ precision: 6, scale: 2 }),    // source: hours[].pressure['ecmwf:aifs']
+    pressure_noaa:           numeric({ precision: 6, scale: 2 }),    // source: hours[].pressure.noaa
+    pressure_sg:             numeric({ precision: 6, scale: 2 }),    // source: hours[].pressure.sg
 
     // --- waterTemperature (°C) ---------------------------------------------
-    water_temp_meto:         real(),    // source: hours[].waterTemperature.meto
-    water_temp_noaa:         real(),    // source: hours[].waterTemperature.noaa
-    water_temp_sg:           real(),    // source: hours[].waterTemperature.sg
+    water_temp_meto:         numeric({ precision: 5, scale: 2 }),    // source: hours[].waterTemperature.meto
+    water_temp_noaa:         numeric({ precision: 5, scale: 2 }),    // source: hours[].waterTemperature.noaa
+    water_temp_sg:           numeric({ precision: 5, scale: 2 }),    // source: hours[].waterTemperature.sg
 
     // --- waveHeight (m) ----------------------------------------------------
-    wave_height_dwd:         real(),    // source: hours[].waveHeight.dwd
-    wave_height_ecmwf:       real(),    // source: hours[].waveHeight.ecmwf
-    wave_height_meteo:       real(),    // source: hours[].waveHeight.meteo
-    wave_height_noaa:        real(),    // source: hours[].waveHeight.noaa
-    wave_height_sg:          real(),    // source: hours[].waveHeight.sg
+    wave_height_dwd:         numeric({ precision: 5, scale: 2 }),    // source: hours[].waveHeight.dwd
+    wave_height_ecmwf:       numeric({ precision: 5, scale: 2 }),    // source: hours[].waveHeight.ecmwf
+    wave_height_meteo:       numeric({ precision: 5, scale: 2 }),    // source: hours[].waveHeight.meteo
+    wave_height_noaa:        numeric({ precision: 5, scale: 2 }),    // source: hours[].waveHeight.noaa
+    wave_height_sg:          numeric({ precision: 5, scale: 2 }),    // source: hours[].waveHeight.sg
 
     // --- windDirection (degrees true) --------------------------------------
-    wind_dir_dwd:            real(),    // source: hours[].windDirection.dwd
-    wind_dir_ecmwf:          real(),    // source: hours[].windDirection.ecmwf
-    wind_dir_ecmwf_aifs:     real(),    // source: hours[].windDirection['ecmwf:aifs']
-    wind_dir_noaa:           real(),    // source: hours[].windDirection.noaa
-    wind_dir_sg:             real(),    // source: hours[].windDirection.sg
+    wind_dir_dwd:            numeric({ precision: 5, scale: 2 }),    // source: hours[].windDirection.dwd
+    wind_dir_ecmwf:          numeric({ precision: 5, scale: 2 }),    // source: hours[].windDirection.ecmwf
+    wind_dir_ecmwf_aifs:     numeric({ precision: 5, scale: 2 }),    // source: hours[].windDirection['ecmwf:aifs']
+    wind_dir_noaa:           numeric({ precision: 5, scale: 2 }),    // source: hours[].windDirection.noaa
+    wind_dir_sg:             numeric({ precision: 5, scale: 2 }),    // source: hours[].windDirection.sg
 
     // --- windSpeed (m/s) ---------------------------------------------------
-    wind_speed_dwd:          real(),    // source: hours[].windSpeed.dwd
-    wind_speed_ecmwf:        real(),    // source: hours[].windSpeed.ecmwf
-    wind_speed_ecmwf_aifs:   real(),    // source: hours[].windSpeed['ecmwf:aifs']
-    wind_speed_noaa:         real(),    // source: hours[].windSpeed.noaa
-    wind_speed_sg:           real(),    // source: hours[].windSpeed.sg
+    wind_speed_dwd:          numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed.dwd
+    wind_speed_ecmwf:        numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed.ecmwf
+    wind_speed_ecmwf_aifs:   numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed['ecmwf:aifs']
+    wind_speed_noaa:         numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed.noaa
+    wind_speed_sg:           numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed.sg
 
     // --- uvIndex (dimensionless) -------------------------------------------
-    uv_index_noaa:           real(),    // source: hours[].uvIndex.noaa  (solar endpoint)
-    uv_index_sg:             real()     // source: hours[].uvIndex.sg    (solar endpoint)
+    uv_index_noaa:           numeric({ precision: 4, scale: 2 }),    // source: hours[].uvIndex.noaa  (solar endpoint)
+    uv_index_sg:             numeric({ precision: 4, scale: 2 })     // source: hours[].uvIndex.sg    (solar endpoint)
 });
 
 // ---------------------------------------------------------------------------
@@ -124,19 +124,19 @@ export const metadata = pgTable('metadata', {
     source:           metaSourceEnum().notNull(),              // 'tides' | 'weather' | 'solar'
 
     // --- common fields (present in all three endpoints) --------------------
-    cost:             numeric({ precision: 10, scale: 0 }),    // source: meta.cost
+    cost:             numeric({ precision: 2, scale: 0 }),    // source: meta.cost
     request_start:    bigint({ mode: 'number' }),              // source: meta.start  (Unix epoch seconds, converted from "YYYY-MM-DD HH:MM" UTC)
 
     // --- tides-only fields -------------------------------------------------
-    daily_quota:      numeric({ precision: 10, scale: 0 }),    // source: meta.dailyQuota
+    daily_quota:      numeric({ precision: 5, scale: 0 }),    // source: meta.dailyQuota
     datum:            varchar({ length: 50 }),                 // source: meta.datum  (e.g. "MSL")
     request_end:      bigint({ mode: 'number' }),              // source: meta.end    (Unix epoch seconds, converted from "YYYY-MM-DD HH:MM" UTC)
     offset:           numeric({ precision: 5, scale: 0 }),     // source: meta.offset (UTC offset hours)
-    request_count:    numeric({ precision: 10, scale: 0 }),    // source: meta.requestCount
+    request_count:    numeric({ precision: 5, scale: 0 }),    // source: meta.requestCount
 
     // station sub-object – flattened, distance omitted (always 0)
-    station_lat:      numeric({ precision: 9, scale: 3 }),     // source: meta.station.lat
-    station_lon:      numeric({ precision: 9, scale: 3 }),     // source: meta.station.lng
+    station_lat:      numeric({ precision: 6, scale: 3 }),     // source: meta.station.lat
+    station_lon:      numeric({ precision: 6, scale: 3 }),     // source: meta.station.lng
     station_name:     varchar({ length: 255 }),                // source: meta.station.name
     station_source:   varchar({ length: 100 }),                // source: meta.station.source
 
