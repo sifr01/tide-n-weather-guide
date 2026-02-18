@@ -124,7 +124,7 @@ export const metadata = pgTable('metadata', {
     source:           metaSourceEnum().notNull(),              // 'tides' | 'weather' | 'solar'
 
     // --- common fields (present in all three endpoints) --------------------
-    cost:             numeric({ precision: 10, scale: 4 }),    // source: meta.cost
+    cost:             numeric({ precision: 10, scale: 0 }),    // source: meta.cost
     request_start:    varchar({ length: 50 }),                 // source: meta.start  (ISO-like string "YYYY-MM-DD HH:MM")
 
     // --- tides-only fields -------------------------------------------------
@@ -135,8 +135,8 @@ export const metadata = pgTable('metadata', {
     request_count:    numeric({ precision: 10, scale: 0 }),    // source: meta.requestCount
 
     // station sub-object – flattened, distance omitted (always 0)
-    station_lat:      numeric({ precision: 9, scale: 6 }),     // source: meta.station.lat
-    station_lon:      numeric({ precision: 9, scale: 6 }),     // source: meta.station.lng
+    station_lat:      numeric({ precision: 9, scale: 3 }),     // source: meta.station.lat
+    station_lon:      numeric({ precision: 9, scale: 3 }),     // source: meta.station.lng
     station_name:     varchar({ length: 255 }),                // source: meta.station.name
     station_source:   varchar({ length: 100 }),                // source: meta.station.source
 
