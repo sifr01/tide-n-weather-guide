@@ -123,9 +123,9 @@ const MOCK_WEATHER_RESPONSE: { hours: WeatherHour[]; meta: WeatherMeta } = {
 // ---------------------------------------------------------------------------
 const MOCK_SOLAR_RESPONSE: { hours: SolarHour[]; meta: SolarMeta } = {
   hours: [
-    { time: '2026-02-15T00:00:00+00:00', uvIndex: { noaa: 0.0, sg: 0.0 } },
-    { time: '2026-02-15T01:00:00+00:00', uvIndex: { noaa: 0.0, sg: 0.0 } },
-    { time: '2026-02-15T02:00:00+00:00', uvIndex: { noaa: 0.0, sg: 0.0 } },
+    { time: '2026-02-15T00:00:00+00:00', uvIndex: { noaa: 0.1, sg: 0.1 } },
+    { time: '2026-02-15T01:00:00+00:00', uvIndex: { noaa: 0.2, sg: 0.2 } },
+    { time: '2026-02-15T02:00:00+00:00', uvIndex: { noaa: 0.3, sg: 0.3 } },
   ],
   meta: {
     cost:         1,
