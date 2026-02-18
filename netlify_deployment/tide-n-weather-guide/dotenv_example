@@ -1,0 +1,2 @@
+# Database URL for serverless functions (server-side only, not exposed to browser)
+DATABASE_URL="postgresql://neondb_owner:......"
