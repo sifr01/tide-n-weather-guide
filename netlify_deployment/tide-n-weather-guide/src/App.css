@@ -1,38 +1,290 @@
-.App {
+/* App.css — global layout and component styles for Tide & Weather Guide */
+
+/* ---------------------------------------------------------------------------
+   Reset / base
+--------------------------------------------------------------------------- */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: #f4f6f8;
+  color: #1a1a2e;
+}
+
+/* ---------------------------------------------------------------------------
+   Navigation bar
+--------------------------------------------------------------------------- */
+
+.app-nav {
+  display: flex;
+  gap: 0;                    /* tabs sit flush against each other */
+  background-color: #1a1a2e;
+  padding: 0 1rem;
+  position: sticky;          /* stays visible when scrolling the table */
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.nav-link {
+  display: inline-block;
+  padding: 0.85rem 1.5rem;
+  color: #a0aec0;
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-bottom: 3px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: #e2e8f0;
+}
+
+/* Active tab — highlighted with an underline accent */
+.nav-link.active {
+  color: #63b3ed;
+  border-bottom-color: #63b3ed;
+}
+
+/* ---------------------------------------------------------------------------
+   Status banners (loading / error shown above page content)
+--------------------------------------------------------------------------- */
+
+.status-banner {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.loading-banner {
+  background-color: #ebf8ff;
+  color: #2b6cb0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.error-banner {
+  background-color: #fff5f5;
+  color: #c53030;
+  font-weight: 600;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+/* ---------------------------------------------------------------------------
+   Page layout
+--------------------------------------------------------------------------- */
+
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Header row: h1 on the left, refresh button on the right */
+.page-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
-.App-link {
-  color: #61dafb;
+.page-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+/* ---------------------------------------------------------------------------
+   Refresh button
+--------------------------------------------------------------------------- */
+
+.refresh-btn {
+  padding: 0.55rem 1.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  background-color: #3182ce;
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
+
+.refresh-btn:hover:not(:disabled) {
+  background-color: #2b6cb0;
+}
+
+.refresh-btn:disabled,
+.refresh-btn.loading {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ---------------------------------------------------------------------------
+   Status messages (inline, below the refresh button)
+--------------------------------------------------------------------------- */
+
+.status-message {
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.status-message.success {
+  background-color: #f0fff4;
+  color: #276749;
+}
+
+.status-message.error {
+  background-color: #fff5f5;
+  color: #c53030;
+}
+
+/* ---------------------------------------------------------------------------
+   No-data placeholder
+--------------------------------------------------------------------------- */
+
+.no-data {
+  color: #718096;
+  font-style: italic;
+  margin-top: 1.5rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Data tables
+--------------------------------------------------------------------------- */
+
+/* Outer wrapper enables horizontal scrolling on small screens */
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.data-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.85rem;
+  background-color: #fff;
+}
+
+/* Column headers — sticky so they remain visible when scrolling vertically */
+.data-table thead th {
+  position: sticky;
+  top: 48px;                 /* height of .app-nav; keeps headers below the nav */
+  background-color: #2d3748;
+  color: #e2e8f0;
+  padding: 0.6rem 0.8rem;
+  text-align: left;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.data-table tbody td {
+  padding: 0.45rem 0.8rem;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+/* Date-header rows — group rows by day, span all columns */
+.date-header-row .date-header-cell {
+  background-color: #edf2f7;
+  color: #2d3748;
+  font-weight: 700;
+  padding: 0.5rem 0.8rem;
+  /* Sticky so the date label stays in view while scrolling through that day */
+  position: sticky;
+  top: 96px;                 /* nav (48px) + thead (48px) */
+  z-index: 9;
+}
+
+/* Today's rows — light blue background, matching the glitch-deployment style */
+.today-row td {
+  background-color: #bee3f8;
+}
+
+/* Footer row — data attribution */
+.footer-row td {
+  background-color: #f7fafc;
+  border-top: 2px solid #cbd5e0;
+  font-size: 0.8rem;
+}
+
+/* Weather table has more columns; allow slightly tighter cell padding */
+.weather-table tbody td {
+  padding: 0.4rem 0.65rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Home page
+--------------------------------------------------------------------------- */
+
+.home-page h1 {
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.home-subtitle {
+  color: #718096;
+  font-size: 1rem;
+  margin-top: 0;
+  margin-bottom: 2rem;
+}
+
+.home-section {
+  margin-bottom: 2.5rem;
+}
+
+.home-section h2 {
+  font-size: 1.3rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.4rem;
+  margin-bottom: 1.2rem;
+}
+
+/* Individual "problem" cards */
+.problem-card {
+  background-color: #fff;
+  border-left: 4px solid #63b3ed;
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+.problem-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.problem-card p {
+  margin: 0;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+/* Solution card */
+.solution-card {
+  background-color: #fff;
+  border-left: 4px solid #68d391;
+  border-radius: 4px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+.solution-card p {
+  margin: 0 0 0.75rem;
+  color: #4a5568;
+}
+
+.solution-card ol {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+  line-height: 1.8;
+}
+
