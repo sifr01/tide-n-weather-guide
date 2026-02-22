@@ -52,13 +52,36 @@ import { tides, metadata } from '../../src/db/schema';
 import { callAPI, STORMGLASS_BASE, LAT, LNG, TidesResponse, toUnixSeconds } from './APIcall';
 
 // ---------------------------------------------------------------------------
-// Tides endpoint URL
-// /v2/tide/extremes/point does not take a &params= query-string; it returns
-// all extreme events (highs and lows) for the given co-ordinates and window.
-// The start/end timestamps would be added here in production; omitted in the
-// mock path because callAPI() ignores the query-string in mock mode.
+// Time-window helpers
+// Stormglass requires Unix epoch seconds (integers) for its start/end params.
+// We request from the start of today (00:00:00 UTC) through to the end of
+// the day 30 days from now (23:59:59 UTC), matching the original Glitch
+// implementation in timeStampofThirtyDays.js.
+// Using UTC throughout avoids the result varying with the server's local
+// timezone (Netlify functions run in UTC, but being explicit is safer).
 // ---------------------------------------------------------------------------
-const TIDES_URL = `${STORMGLASS_BASE}/tide/extremes/point?lat=${LAT}&lng=${LNG}`;
+
+// Start of today at 00:00:00 UTC, as Unix epoch seconds.
+const startOfTodayUTC = (): number => {
+  const now = new Date();
+  // Zero out hours/minutes/seconds/ms in UTC to get midnight today.
+  return Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000);
+};
+
+// End of the day 30 days from now at 23:59:59 UTC, as Unix epoch seconds.
+const endOf30DaysUTC = (): number => {
+  const now = new Date();
+  // Add 30 days to today's date and set the time to 23:59:59 UTC.
+  return Math.floor(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 30, 23, 59, 59) / 1000);
+};
+
+// ---------------------------------------------------------------------------
+// Tides endpoint URL — includes &start and &end so the Stormglass API
+// returns only the relevant 30-day window rather than rejecting the request.
+// callAPI() in mock mode ignores the query-string entirely, so the extra
+// params are harmless during local development with USE_MOCK_DATA="true".
+// ---------------------------------------------------------------------------
+const TIDES_URL = `${STORMGLASS_BASE}/tide/extremes/point?lat=${LAT}&lng=${LNG}&start=${startOfTodayUTC()}&end=${endOf30DaysUTC()}`;
 
 // ---------------------------------------------------------------------------
 // DB setup — DATABASE_URL is server-side only (no REACT_APP_ prefix)
