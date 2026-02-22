@@ -1,2 +1,7 @@
 # Database URL for serverless functions (server-side only, not exposed to browser)
 DATABASE_URL="postgresql://neondb_owner:......"
+
+# Set to "true" to use local JSON mock files instead of hitting the live
+# Stormglass API.  This avoids consuming API quota during local development.
+# Any value other than the exact string "true" is treated as false (live mode).
+USE_MOCK_DATA="true"
