@@ -9,9 +9,10 @@
 //
 // On each invocation:
 //   1. TRUNCATE the `weather` table  (stale forecasts are replaced entirely)
-//   2. Merge the two hour arrays on the `time` key (Unix epoch seconds) and
-//      bulk-INSERT the combined rows into `weather`
-//   3. Append one row to `metadata` per source — source='weather' and
+//   2. TRUNCATE the `solar` table    (stale forecasts are replaced entirely)
+//   3. Bulk-INSERT weather rows into `weather`
+//   4. Bulk-INSERT solar rows into `solar`
+//   5. Append one row to `metadata` per source — source='weather' and
 //      source='solar' — as an append-only audit log
 
 // ---------------------------------------------------------------------------
@@ -154,16 +155,14 @@ export const handler: Handler = async () => {
     const { hours: solarHours,   meta: solarMeta   } = MOCK_SOLAR_RESPONSE;
 
     // --- 1. Flush stale weather data ----------------------------------------
+    // TRUNCATE is faster than DELETE for full-table replacement and resets
+    // any storage bloat from the previous poll cycle.
     await db.execute(drizzleSql`TRUNCATE TABLE weather`);
 
-    // --- 2. Build a lookup map of solar uvIndex values keyed by Unix seconds -
-    // Solar hours use ISO 8601 with timezone offset (+00:00), so new Date()
-    // parses them reliably without any string manipulation.
-    const solarByTime = new Map<number, { noaa?: number; sg?: number }>();
-    for (const hour of solarHours) {
-      const unixSec = Math.floor(new Date(hour.time).getTime() / 1000);
-      solarByTime.set(unixSec, hour.uvIndex ?? {});
-    }
+    // --- 2. Flush stale solar data ------------------------------------------
+    // Solar is flushed in the same cycle as weather so both tables always
+    // represent the same forecast window.
+    await db.execute(drizzleSql`TRUNCATE TABLE solar`);
 
     // --- 3. Map weather hours → DB rows, merging solar uvIndex on time -------
     // Both APIs share the same UTC hourly cadence so every weather row should
