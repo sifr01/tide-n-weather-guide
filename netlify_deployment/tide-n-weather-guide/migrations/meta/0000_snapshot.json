@@ -1,5 +1,5 @@
 {
-  "id": "ee78c21a-d85b-4880-901c-e699aba0dcc0",
+  "id": "e7d4a197-9555-4386-9cdf-6d68d980843f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -375,8 +375,8 @@
         "time": {
           "name": "time",
           "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
+          "primaryKey": true,
+          "notNull": true
         },
         "gust_ecmwf": {
           "name": "gust_ecmwf",
@@ -541,9 +541,10 @@
           "notNull": false
         }
       },
+      "definition": "select \"weather\".\"time\", \"weather\".\"gust_ecmwf\", \"weather\".\"gust_noaa\", \"weather\".\"gust_sg\", \"weather\".\"pressure_ecmwf\", \"weather\".\"pressure_ecmwf_aifs\", \"weather\".\"pressure_noaa\", \"weather\".\"pressure_sg\", \"weather\".\"water_temp_meto\", \"weather\".\"water_temp_noaa\", \"weather\".\"water_temp_sg\", \"weather\".\"wave_height_dwd\", \"weather\".\"wave_height_ecmwf\", \"weather\".\"wave_height_meteo\", \"weather\".\"wave_height_noaa\", \"weather\".\"wave_height_sg\", \"weather\".\"wind_dir_dwd\", \"weather\".\"wind_dir_ecmwf\", \"weather\".\"wind_dir_ecmwf_aifs\", \"weather\".\"wind_dir_noaa\", \"weather\".\"wind_dir_sg\", \"weather\".\"wind_speed_dwd\", \"weather\".\"wind_speed_ecmwf\", \"weather\".\"wind_speed_ecmwf_aifs\", \"weather\".\"wind_speed_noaa\", \"weather\".\"wind_speed_sg\", \"solar\".\"uv_index_noaa\", \"solar\".\"uv_index_sg\" from \"weather\" left join \"solar\" on \"solar\".\"time\" = \"weather\".\"time\"",
       "name": "weather_solar",
       "schema": "public",
-      "isExisting": true,
+      "isExisting": false,
       "materialized": false
     }
   },

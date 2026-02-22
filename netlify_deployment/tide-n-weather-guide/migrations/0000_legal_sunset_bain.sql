@@ -57,3 +57,5 @@ CREATE TABLE "weather" (
 	"wind_speed_noaa" numeric(5, 2),
 	"wind_speed_sg" numeric(5, 2)
 );
+--> statement-breakpoint
+CREATE VIEW "public"."weather_solar" AS (select "weather"."time", "weather"."gust_ecmwf", "weather"."gust_noaa", "weather"."gust_sg", "weather"."pressure_ecmwf", "weather"."pressure_ecmwf_aifs", "weather"."pressure_noaa", "weather"."pressure_sg", "weather"."water_temp_meto", "weather"."water_temp_noaa", "weather"."water_temp_sg", "weather"."wave_height_dwd", "weather"."wave_height_ecmwf", "weather"."wave_height_meteo", "weather"."wave_height_noaa", "weather"."wave_height_sg", "weather"."wind_dir_dwd", "weather"."wind_dir_ecmwf", "weather"."wind_dir_ecmwf_aifs", "weather"."wind_dir_noaa", "weather"."wind_dir_sg", "weather"."wind_speed_dwd", "weather"."wind_speed_ecmwf", "weather"."wind_speed_ecmwf_aifs", "weather"."wind_speed_noaa", "weather"."wind_speed_sg", "solar"."uv_index_noaa", "solar"."uv_index_sg" from "weather" left join "solar" on "solar"."time" = "weather"."time");
