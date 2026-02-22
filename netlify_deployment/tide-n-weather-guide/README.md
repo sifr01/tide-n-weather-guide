@@ -52,6 +52,7 @@ rm -r ./migrations
 ```
 
 ``` SQL 
+DROP VIEW weather_solar;
 DROP TABLE tides, solar, weather, metadata;
 DROP TYPE meta_source, tide_type;
 ```
