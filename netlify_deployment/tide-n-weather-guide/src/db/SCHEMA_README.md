@@ -244,7 +244,7 @@ LEFT JOIN solar s ON s.time = w.time;
 | `uv_index_noaa` | `solar` table (NULL if no matching solar row) |
 | `uv_index_sg` | `solar` table (NULL if no matching solar row) |
 
-> Managed by migration `0001_solar_table_and_view.sql`. Drizzle references it via `.existing()` so schema-push never recreates or drops it.
+> Defined in `schema.ts` using the Drizzle query-builder form (`.as(qb => ...)`), so `npm run db:generate` will emit a `CREATE VIEW` statement in the migration file automatically.
 
 ---
 
