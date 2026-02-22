@@ -24,12 +24,25 @@ type HandlerEvent   = Record<string, unknown>;
 type HandlerContext = Record<string, unknown>;
 type Handler = (event: HandlerEvent, context: HandlerContext) => Promise<HandlerResponse>;
 
-import { neon }   from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { tides, weatherSolarView } from '../../src/db/schema';
+import { neon }    from '@neondatabase/serverless';
+import { drizzle }  from 'drizzle-orm/neon-http';
+import { sql }      from 'drizzle-orm';
+import { tides }    from '../../src/db/schema';
+import type { WeatherSolarRow } from '../../src/types/data';
 
 // ---------------------------------------------------------------------------
 // DB client — DATABASE_URL is injected by Netlify at runtime.
+//
+// Note: we deliberately do NOT use db.select().from(weatherSolarView) here.
+// weatherSolarView is a pgView whose UV columns (uv_index_noaa, uv_index_sg)
+// are defined via cross-table references to the `solar` table inside the
+// view's query builder.  When Drizzle generates the SELECT column list for
+// the view itself, those references have no valid column name in the view's
+// own scope and emit "undefined" in the SQL.
+//
+// The safe workaround is a raw sql`SELECT * FROM weather_solar` query, which
+// tells PostgreSQL to return every column defined in the view without Drizzle
+// needing to enumerate them.
 // ---------------------------------------------------------------------------
 const sqlClient = neon(process.env.DATABASE_URL!);
 const db = drizzle(sqlClient);
@@ -39,12 +52,25 @@ const db = drizzle(sqlClient);
 // ---------------------------------------------------------------------------
 export const handler: Handler = async () => {
   try {
-    // Query both tables in parallel to minimise latency.
-    const [tidesRows, weatherSolarRows] = await Promise.all([
-      // ORDER BY time ascending so the table renders chronologically.
+    // Query tides table and weather_solar view in parallel to minimise latency.
+    const [tidesRows, weatherSolarResult] = await Promise.all([
+      // Tides: use Drizzle query builder — the tides table has no cross-table
+      // column references so column resolution works correctly.
       db.select().from(tides).orderBy(tides.time),
-      db.select().from(weatherSolarView).orderBy(weatherSolarView.time),
+
+      // weather_solar: use a raw SQL query instead of db.select().from(view).
+      // Drizzle cannot enumerate the view's UV columns (they are defined via
+      // cross-table references to `solar`) so it emits "undefined" in the
+      // SELECT list.  SELECT * lets PostgreSQL return every view column
+      // directly without Drizzle needing to name them individually.
+      db.execute(sql`SELECT * FROM weather_solar ORDER BY time ASC`),
     ]);
+
+    // db.execute() returns a Drizzle NeonHttpQueryResult whose rows property
+    // is typed as Record<string, unknown>[] — too wide for direct assignment.
+    // The double cast (via unknown) tells TypeScript we know the shape matches
+    // WeatherSolarRow because it mirrors the view's column list exactly.
+    const weatherSolarRows = weatherSolarResult.rows as unknown as WeatherSolarRow[];
 
     return {
       statusCode: 200,
