@@ -1,5 +1,7 @@
 # README
 
+[Repository location](https://github.com/sifr01/tide-n-weather-guide/)
+
 ## Architecture Overview
 
 This document describes the architecture of the Tide & Weather Guide application.
