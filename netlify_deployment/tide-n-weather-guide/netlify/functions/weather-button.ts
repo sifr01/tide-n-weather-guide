@@ -99,50 +99,21 @@ type WeatherMeta = {
 type SolarMeta = WeatherMeta;
 
 // ---------------------------------------------------------------------------
-// Mock API response — mirrors /v2/weather/point
-// Only the first 3 hours of weather.json are included here for brevity;
-// in the full file all hours are present.
+// Mock API responses — read from the model files instead of being inlined here.
+// model/weather.json mirrors /v2/weather/point.
+// model/solar.json   mirrors /v2/solar/point.
+//
+// Keeping mock data in dedicated files makes it easy to update the dataset
+// without touching function logic, and avoids inflating the function source.
 // ---------------------------------------------------------------------------
-const MOCK_WEATHER_RESPONSE: { hours: WeatherHour[]; meta: WeatherMeta } = {
-  hours: [
-    { time: '2026-02-15T00:00:00+00:00', gust: { ecmwf: 3.75, noaa: 4.14, sg: 3.75 }, pressure: { ecmwf: 1010.84, 'ecmwf:aifs': 1011.82, noaa: 1029.5, sg: 1010.84 }, waterTemperature: { meto: 13.06, noaa: 13.0, sg: 13.06 }, waveHeight: { dwd: 2.91, ecmwf: 2.87, meteo: 2.47, noaa: 2.34, sg: 2.87 }, windDirection: { dwd: 268.67, ecmwf: 249.99, 'ecmwf:aifs': 249.64, noaa: 269.38, sg: 249.99 }, windSpeed: { dwd: 4.17, ecmwf: 1.28, 'ecmwf:aifs': 1.59, noaa: 3.51, sg: 1.28 } },
-    { time: '2026-02-15T01:00:00+00:00', gust: { ecmwf: 5.91, noaa: 4.87, sg: 5.91 }, pressure: { ecmwf: 1010.49, 'ecmwf:aifs': 1011.52, noaa: 1029.15, sg: 1010.49 }, waterTemperature: { meto: 13.05, noaa: 12.99, sg: 13.05 }, waveHeight: { dwd: 2.83, ecmwf: 2.78, meteo: 2.41, noaa: 2.29, sg: 2.78 }, windDirection: { dwd: 263.86, ecmwf: 246.22, 'ecmwf:aifs': 245.86, noaa: 263.17, sg: 246.22 }, windSpeed: { dwd: 4.38, ecmwf: 1.65, 'ecmwf:aifs': 1.87, noaa: 4.22, sg: 1.65 } },
-    { time: '2026-02-15T02:00:00+00:00', gust: { ecmwf: 5.91, noaa: 5.59, sg: 5.91 }, pressure: { ecmwf: 1010.14, 'ecmwf:aifs': 1011.23, noaa: 1028.81, sg: 1010.14 }, waterTemperature: { meto: 13.06, noaa: 12.98, sg: 13.06 }, waveHeight: { dwd: 2.74, ecmwf: 2.69, meteo: 2.35, noaa: 2.24, sg: 2.69 }, windDirection: { dwd: 259.06, ecmwf: 242.46, 'ecmwf:aifs': 242.09, noaa: 256.95, sg: 242.46 }, windSpeed: { dwd: 4.58, ecmwf: 2.03, 'ecmwf:aifs': 2.15, noaa: 4.92, sg: 2.03 } },
-  ],
-  meta: {
-    cost:         1,
-    dailyQuota:   10,
-    end:          '2026-02-24 23:00',
-    lat:          41.683,
-    lng:          -8.833,
-    params:       ['waveHeight', 'windSpeed', 'gust', 'windDirection', 'waterTemperature', 'pressure'],
-    requestCount: 3,
-    start:        '2026-02-15 00:00',
-  },
-};
+import weatherJson from '../../model/weather.json';
+import solarJson   from '../../model/solar.json';
 
-// ---------------------------------------------------------------------------
-// Mock API response — mirrors /v2/solar/point
-// Only the first 3 hours of solar.json are included here for brevity;
-// in the full file all hours are present.
-// ---------------------------------------------------------------------------
-const MOCK_SOLAR_RESPONSE: { hours: SolarHour[]; meta: SolarMeta } = {
-  hours: [
-    { time: '2026-02-15T00:00:00+00:00', uvIndex: { noaa: 0.1, sg: 0.1 } },
-    { time: '2026-02-15T01:00:00+00:00', uvIndex: { noaa: 0.2, sg: 0.2 } },
-    { time: '2026-02-15T02:00:00+00:00', uvIndex: { noaa: 0.3, sg: 0.3 } },
-  ],
-  meta: {
-    cost:         1,
-    dailyQuota:   10,
-    end:          '2026-02-24 23:00',
-    lat:          41.683,
-    lng:          -8.833,
-    params:       ['uvIndex'],
-    requestCount: 4,
-    start:        '2026-02-15 00:00',
-  },
-};
+// Cast the imported JSON to the typed shapes the handler already uses.
+// TypeScript widens object keys from JSON imports to their literal types,
+// but 'params' becomes string[] automatically — no manual narrowing needed.
+const MOCK_WEATHER_RESPONSE = weatherJson as { hours: WeatherHour[]; meta: WeatherMeta };
+const MOCK_SOLAR_RESPONSE   = solarJson   as { hours: SolarHour[];   meta: SolarMeta   };
 
 // ---------------------------------------------------------------------------
 // DB setup — DATABASE_URL is server-side only (no REACT_APP_ prefix)
