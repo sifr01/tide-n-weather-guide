@@ -38,3 +38,5 @@ graph TD
 
 ## Resources
 - [Netlify-DB](https://docs.netlify.com/build/data-and-storage/netlify-db/)
+
+To run the server locally for development run: `npm run dev` and navigate to localhost:8888
