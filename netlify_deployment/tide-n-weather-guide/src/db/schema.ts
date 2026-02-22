@@ -1,4 +1,5 @@
 import { bigint, numeric, pgEnum, pgTable, pgView, text, varchar } from 'drizzle-orm/pg-core';
+import { eq } from 'drizzle-orm'; // eq() is used in the weatherSolarView LEFT JOIN condition
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -130,43 +131,51 @@ export const solar = pgTable('solar', {
  * Join type: LEFT JOIN — weather rows without a matching solar row are still
  * returned (uv columns will be NULL for those hours).
  *
- * The view DDL is created and managed via migrations (not by Drizzle's
- * schema-push). The `.existing()` call tells Drizzle to treat this as a
- * reference to a view that already exists in the DB, so it never tries to
- * generate CREATE VIEW statements or drop the view during migrations.
+ * Defined with the query-builder form (.as(qb => ...)) so that Drizzle Kit's
+ * `db:generate` command will emit a `CREATE VIEW` statement in the migration
+ * file.  Without this, the view would never be created in the database.
  */
-export const weatherSolarView = pgView('weather_solar', {
-    // All columns from the `weather` table --------------------------------
-    time:                    bigint({ mode: 'number' }),          // Unix epoch seconds (join key)
-    gust_ecmwf:              numeric({ precision: 5, scale: 2 }),
-    gust_noaa:               numeric({ precision: 5, scale: 2 }),
-    gust_sg:                 numeric({ precision: 5, scale: 2 }),
-    pressure_ecmwf:          numeric({ precision: 6, scale: 2 }),
-    pressure_ecmwf_aifs:     numeric({ precision: 6, scale: 2 }),
-    pressure_noaa:           numeric({ precision: 6, scale: 2 }),
-    pressure_sg:             numeric({ precision: 6, scale: 2 }),
-    water_temp_meto:         numeric({ precision: 5, scale: 2 }),
-    water_temp_noaa:         numeric({ precision: 5, scale: 2 }),
-    water_temp_sg:           numeric({ precision: 5, scale: 2 }),
-    wave_height_dwd:         numeric({ precision: 5, scale: 2 }),
-    wave_height_ecmwf:       numeric({ precision: 5, scale: 2 }),
-    wave_height_meteo:       numeric({ precision: 5, scale: 2 }),
-    wave_height_noaa:        numeric({ precision: 5, scale: 2 }),
-    wave_height_sg:          numeric({ precision: 5, scale: 2 }),
-    wind_dir_dwd:            numeric({ precision: 5, scale: 2 }),
-    wind_dir_ecmwf:          numeric({ precision: 5, scale: 2 }),
-    wind_dir_ecmwf_aifs:     numeric({ precision: 5, scale: 2 }),
-    wind_dir_noaa:           numeric({ precision: 5, scale: 2 }),
-    wind_dir_sg:             numeric({ precision: 5, scale: 2 }),
-    wind_speed_dwd:          numeric({ precision: 5, scale: 2 }),
-    wind_speed_ecmwf:        numeric({ precision: 5, scale: 2 }),
-    wind_speed_ecmwf_aifs:   numeric({ precision: 5, scale: 2 }),
-    wind_speed_noaa:         numeric({ precision: 5, scale: 2 }),
-    wind_speed_sg:           numeric({ precision: 5, scale: 2 }),
-    // UV columns from the `solar` table (NULL when no solar row exists) ----
-    uv_index_noaa:           numeric({ precision: 4, scale: 2 }), // source: solar.uv_index_noaa
-    uv_index_sg:             numeric({ precision: 4, scale: 2 }), // source: solar.uv_index_sg
-}).existing(); // existing() = the view is managed by migrations, not by Drizzle schema-push
+export const weatherSolarView = pgView('weather_solar').as((qb) =>
+    // Explicitly select every weather column plus only the UV value columns
+    // from solar — solar.time is intentionally omitted because weather.time
+    // is already included and PostgreSQL forbids two columns with the same
+    // name in a single view (error 42701: "column specified more than once").
+    qb
+        .select({
+            // --- all columns from weather ------------------------------------
+            time:                    weather.time,
+            gust_ecmwf:              weather.gust_ecmwf,
+            gust_noaa:               weather.gust_noaa,
+            gust_sg:                 weather.gust_sg,
+            pressure_ecmwf:          weather.pressure_ecmwf,
+            pressure_ecmwf_aifs:     weather.pressure_ecmwf_aifs,
+            pressure_noaa:           weather.pressure_noaa,
+            pressure_sg:             weather.pressure_sg,
+            water_temp_meto:         weather.water_temp_meto,
+            water_temp_noaa:         weather.water_temp_noaa,
+            water_temp_sg:           weather.water_temp_sg,
+            wave_height_dwd:         weather.wave_height_dwd,
+            wave_height_ecmwf:       weather.wave_height_ecmwf,
+            wave_height_meteo:       weather.wave_height_meteo,
+            wave_height_noaa:        weather.wave_height_noaa,
+            wave_height_sg:          weather.wave_height_sg,
+            wind_dir_dwd:            weather.wind_dir_dwd,
+            wind_dir_ecmwf:          weather.wind_dir_ecmwf,
+            wind_dir_ecmwf_aifs:     weather.wind_dir_ecmwf_aifs,
+            wind_dir_noaa:           weather.wind_dir_noaa,
+            wind_dir_sg:             weather.wind_dir_sg,
+            wind_speed_dwd:          weather.wind_speed_dwd,
+            wind_speed_ecmwf:        weather.wind_speed_ecmwf,
+            wind_speed_ecmwf_aifs:   weather.wind_speed_ecmwf_aifs,
+            wind_speed_noaa:         weather.wind_speed_noaa,
+            wind_speed_sg:           weather.wind_speed_sg,
+            // --- UV columns from solar (solar.time excluded — same as weather.time) ---
+            uv_index_noaa:           solar.uv_index_noaa,   // NULL when no matching solar row
+            uv_index_sg:             solar.uv_index_sg,     // NULL when no matching solar row
+        })
+        .from(weather)
+        .leftJoin(solar, eq(solar.time, weather.time))
+);
 
 // ---------------------------------------------------------------------------
 // metadata
