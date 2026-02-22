@@ -27,6 +27,12 @@ export interface AppData {
    * updates in-place without a full page reload.
    */
   refetchTides: () => Promise<void>;
+  /**
+   * Re-fetches only the weatherSolar data from get-data and updates state.
+   * Called by WeatherPage after a successful weather-button POST so the table
+   * updates in-place without a full page reload.
+   */
+  refetchWeatherSolar: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,5 +103,32 @@ export function useAppData(): AppData {
     }
   };
 
-  return { tides, weatherSolar, loading, error, refetchTides };
+  // ---------------------------------------------------------------------------
+  // refetchWeatherSolar — re-calls get-data and updates only the weatherSolar
+  // state.  Called by WeatherPage after a successful weather-button POST so
+  // the table refreshes in-place without a full page reload.
+  // tides state is left untouched because only weather/solar were updated.
+  // ---------------------------------------------------------------------------
+  const refetchWeatherSolar = async (): Promise<void> => {
+    try {
+      const response = await fetch('/.netlify/functions/get-data');
+      const json = await response.json();
+
+      if (!response.ok) {
+        // Surface but don't overwrite the main error banner — the initial
+        // load was fine; this is a post-refresh failure.
+        console.error('refetchWeatherSolar: get-data error', json.error);
+        return;
+      }
+
+      // Replace weatherSolar state with the freshly loaded rows.
+      setWeatherSolar(json.weatherSolar ?? []);
+    } catch (err) {
+      // Log but don't update the global error state — the table will simply
+      // remain showing the pre-refresh data until the user tries again.
+      console.error('refetchWeatherSolar: network error', err);
+    }
+  };
+
+  return { tides, weatherSolar, loading, error, refetchTides, refetchWeatherSolar };
 }

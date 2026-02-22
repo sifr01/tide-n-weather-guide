@@ -20,6 +20,12 @@ interface WeatherPageProps {
   /** Rows from the `weather_solar` DB view — passed from App on first load
    *  so no additional DB call is needed when navigating to this page. */
   weatherSolar: WeatherSolarRow[];
+  /**
+   * Callback that re-fetches the weatherSolar rows from get-data and updates
+   * the weatherSolar state in App.  Called after a successful weather-button
+   * POST so the table updates in-place without requiring a page reload.
+   */
+  refetchWeatherSolar: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,14 +75,16 @@ const fmt = (value: string | null, decimals = 2): string =>
 // Component
 // ---------------------------------------------------------------------------
 
-const WeatherPage: React.FC<WeatherPageProps> = ({ weatherSolar }) => {
+const WeatherPage: React.FC<WeatherPageProps> = ({ weatherSolar, refetchWeatherSolar }) => {
   // Button state for the "Refresh Weather" API call.
   const [status,  setStatus]  = useState<ButtonStatus>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
   // Calls the weather-button Netlify function to refresh the DB cache from
-  // the Stormglass weather + solar endpoints.
+  // the Stormglass weather + solar endpoints, then immediately re-fetches the
+  // updated rows from get-data via the refetchWeatherSolar callback so the
+  // table updates in-place without requiring a page reload.
   // -------------------------------------------------------------------------
   const handleRefresh = async () => {
     setStatus('loading');
@@ -85,6 +93,9 @@ const WeatherPage: React.FC<WeatherPageProps> = ({ weatherSolar }) => {
       const response = await fetch('/.netlify/functions/weather-button', { method: 'POST' });
       const data = await response.json();
       if (response.ok && data.success) {
+        // Re-fetch the updated weatherSolar rows from the DB so the table
+        // reflects the newly inserted data immediately.
+        await refetchWeatherSolar();
         setStatus('success');
         setMessage(
           `✓ Inserted ${data.rowsInserted} weather hours` +
