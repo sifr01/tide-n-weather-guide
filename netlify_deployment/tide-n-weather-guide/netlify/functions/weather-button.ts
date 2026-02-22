@@ -1,11 +1,12 @@
 // Netlify serverless function — Weather button
 // Triggered when the user clicks the "Weather" button in the React UI.
-// Uses mock data (weather.json + solar.json) instead of live API calls.
-//
-// In production this function would call two Stormglass endpoints in parallel:
+// Calls two Stormglass endpoints in parallel via the shared APIcall module:
 //   /v2/weather/point  → gust, pressure, waterTemperature, waveHeight,
 //                        windDirection, windSpeed
 //   /v2/solar/point    → uvIndex
+//
+// Whether a real network call or mock JSON file is used is controlled by
+// the USE_MOCK_DATA flag in APIcall.ts — this file does not need to know.
 //
 // On each invocation:
 //   1. TRUNCATE the `weather` table  (stale forecasts are replaced entirely)
@@ -50,70 +51,30 @@ import { sql as drizzleSql } from 'drizzle-orm';
 import { weather, solar, metadata } from '../../src/db/schema';
 
 // ---------------------------------------------------------------------------
-// Shared helper — convert a Stormglass 'YYYY-MM-DD HH:MM' timestamp string
-// to Unix epoch seconds (integer).
+// Shared API module — owns the fetch logic, API key, GPS constants,
+// USE_MOCK_DATA flag, and all response type definitions.
+// ---------------------------------------------------------------------------
+import {
+  callAPI, STORMGLASS_BASE, LAT, LNG,
+  WeatherHour, SolarHour, WeatherMeta, SolarMeta,
+  WeatherResponse, SolarResponse,
+  toUnixSeconds,
+} from './APIcall';
+
+// ---------------------------------------------------------------------------
+// Endpoint URLs — weather and solar are called in parallel on each invocation.
 //
-// The format lacks both the ISO 8601 'T' separator and a timezone designator.
-// Without explicit UTC anchoring, new Date() would interpret the string as
-// local time — producing different results depending on the runtime timezone.
-// Replacing the space with 'T' and appending 'Z' forces UTC parsing.
-// ---------------------------------------------------------------------------
-const toUnixSeconds = (stormglassTimestamp: string): number =>
-  Math.floor(new Date(stormglassTimestamp.replace(' ', 'T') + 'Z').getTime() / 1000);
-
-// ---------------------------------------------------------------------------
-// Type aliases for one hour's worth of each response
-// ---------------------------------------------------------------------------
-
-// A single hour entry from /v2/weather/point — all source sub-keys are
-// optional because not every model provides every parameter for every hour.
-type WeatherHour = {
-  time: string;                                        // ISO 8601 UTC
-  gust?:             { ecmwf?: number; noaa?: number; sg?: number };
-  pressure?:         { ecmwf?: number; 'ecmwf:aifs'?: number; noaa?: number; sg?: number };
-  waterTemperature?: { meto?: number; noaa?: number; sg?: number };
-  waveHeight?:       { dwd?: number; ecmwf?: number; meteo?: number; noaa?: number; sg?: number };
-  windDirection?:    { dwd?: number; ecmwf?: number; 'ecmwf:aifs'?: number; noaa?: number; sg?: number };
-  windSpeed?:        { dwd?: number; ecmwf?: number; 'ecmwf:aifs'?: number; noaa?: number; sg?: number };
-};
-
-// A single hour entry from /v2/solar/point.
-type SolarHour = {
-  time: string;                                        // ISO 8601 UTC
-  uvIndex?: { noaa?: number; sg?: number };
-};
-
-// The meta object returned by the weather endpoint.
-type WeatherMeta = {
-  cost:         number;
-  dailyQuota:   number;
-  end:          string;   // 'YYYY-MM-DD HH:MM'
-  lat:          number;
-  lng:          number;
-  params:       string[];
-  requestCount: number;
-  start:        string;   // 'YYYY-MM-DD HH:MM'
-};
-
-// The meta object returned by the solar endpoint (same shape as weather meta).
-type SolarMeta = WeatherMeta;
-
-// ---------------------------------------------------------------------------
-// Mock API responses — read from the model files instead of being inlined here.
-// model/weather.json mirrors /v2/weather/point.
-// model/solar.json   mirrors /v2/solar/point.
+// &params= lists the Stormglass parameters requested for each endpoint.
+// These are weather-specific so they are defined here, not in APIcall.ts.
 //
-// Keeping mock data in dedicated files makes it easy to update the dataset
-// without touching function logic, and avoids inflating the function source.
+// In production the start/end timestamps would be appended to each URL.
+// Omitted here because callAPI() ignores query-string arguments in mock mode.
 // ---------------------------------------------------------------------------
-import weatherJson from '../../model/weather.json';
-import solarJson   from '../../model/solar.json';
+const PARAMS_WEATHER = 'waveHeight,windSpeed,gust,windDirection,waterTemperature,pressure';
+const PARAMS_SOLAR   = 'uvIndex';
 
-// Cast the imported JSON to the typed shapes the handler already uses.
-// TypeScript widens object keys from JSON imports to their literal types,
-// but 'params' becomes string[] automatically — no manual narrowing needed.
-const MOCK_WEATHER_RESPONSE = weatherJson as { hours: WeatherHour[]; meta: WeatherMeta };
-const MOCK_SOLAR_RESPONSE   = solarJson   as { hours: SolarHour[];   meta: SolarMeta   };
+const WEATHER_URL = `${STORMGLASS_BASE}/weather/point?lat=${LAT}&lng=${LNG}&params=${PARAMS_WEATHER}`;
+const SOLAR_URL   = `${STORMGLASS_BASE}/solar/point?lat=${LAT}&lng=${LNG}&params=${PARAMS_SOLAR}`;
 
 // ---------------------------------------------------------------------------
 // DB setup — DATABASE_URL is server-side only (no REACT_APP_ prefix)
@@ -126,8 +87,16 @@ const db = drizzle(sqlClient);
 // ---------------------------------------------------------------------------
 export const handler: Handler = async () => {
   try {
-    const { hours: weatherHours, meta: weatherMeta } = MOCK_WEATHER_RESPONSE;
-    const { hours: solarHours,   meta: solarMeta   } = MOCK_SOLAR_RESPONSE;
+    // Make both API calls concurrently — mirrors the old fetchWeatherAndSolarData.js
+    // pattern.  callAPI() resolves to mock JSON or a live Stormglass response
+    // depending on the USE_MOCK_DATA flag inside APIcall.ts.
+    const [
+      { hours: weatherHours, meta: weatherMeta },
+      { hours: solarHours,   meta: solarMeta   },
+    ] = await Promise.all([
+      callAPI<WeatherResponse>(WEATHER_URL),
+      callAPI<SolarResponse>(SOLAR_URL),
+    ]);
 
     // --- 1. Flush stale weather data ----------------------------------------
     // TRUNCATE is faster than DELETE for full-table replacement and resets

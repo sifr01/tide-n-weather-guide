@@ -1,6 +1,8 @@
 // Netlify serverless function — Tides button
 // Triggered when the user clicks the "Tides" button in the React UI.
-// Uses mock data (tides.json) instead of a live API call.
+// Calls the Stormglass /v2/tide/extremes/point endpoint via the shared
+// APIcall module.  Whether a real network call or mock JSON is used is
+// controlled by the USE_MOCK_DATA flag in APIcall.ts.
 //
 // On each invocation:
 //   1. TRUNCATE the `tides` table   (stale forecasts are replaced entirely)
@@ -44,25 +46,19 @@ import { sql as drizzleSql } from 'drizzle-orm';
 import { tides, metadata } from '../../src/db/schema';
 
 // ---------------------------------------------------------------------------
-// Mock API response — read from the model file instead of being inlined here.
-// model/tides.json mirrors the real shape of /v2/tide/extremes/point.
-// Keeping mock data in a dedicated file makes it easy to update without
-// touching function logic, and avoids inflating the function source.
+// Shared API module — owns the fetch logic, API key, GPS constants,
+// USE_MOCK_DATA flag, and all response type definitions.
 // ---------------------------------------------------------------------------
-import tidesJson from '../../model/tides.json';
+import { callAPI, STORMGLASS_BASE, LAT, LNG, TidesResponse, toUnixSeconds } from './APIcall';
 
-// Cast the imported JSON to the narrower type the handler needs.
-// 'as const' inference from JSON import widens 'type' to string, so we
-// assert the expected union explicitly.
-const MOCK_TIDES_RESPONSE = tidesJson as {
-  data: { height: number; time: string; type: 'high' | 'low' }[];
-  meta: {
-    cost: number; dailyQuota: number; datum: string; end: string;
-    lat: number; lng: number; offset: number; requestCount: number;
-    start: string; station: { distance: number; lat: number; lng: number;
-    name: string; source: string };
-  };
-};
+// ---------------------------------------------------------------------------
+// Tides endpoint URL
+// /v2/tide/extremes/point does not take a &params= query-string; it returns
+// all extreme events (highs and lows) for the given co-ordinates and window.
+// The start/end timestamps would be added here in production; omitted in the
+// mock path because callAPI() ignores the query-string in mock mode.
+// ---------------------------------------------------------------------------
+const TIDES_URL = `${STORMGLASS_BASE}/tide/extremes/point?lat=${LAT}&lng=${LNG}`;
 
 // ---------------------------------------------------------------------------
 // DB setup — DATABASE_URL is server-side only (no REACT_APP_ prefix)
@@ -75,7 +71,9 @@ const db = drizzle(sqlClient);
 // ---------------------------------------------------------------------------
 export const handler: Handler = async () => {
   try {
-    const { data, meta } = MOCK_TIDES_RESPONSE;
+    // callAPI resolves to mock JSON or a live Stormglass response depending
+    // on the USE_MOCK_DATA flag inside APIcall.ts.
+    const { data, meta } = await callAPI<TidesResponse>(TIDES_URL);
 
     // --- 1. Flush stale tides -----------------------------------------------
     await db.execute(drizzleSql`TRUNCATE TABLE tides`);
@@ -91,14 +89,9 @@ export const handler: Handler = async () => {
     await db.insert(tides).values(tideRows).onConflictDoNothing();
 
     // --- 3. Append metadata audit row --------------------------------------
-    // meta.start / meta.end arrive as 'YYYY-MM-DD HH:MM' (no T separator,
-    // no timezone indicator).  Appending 'T' and 'Z' makes them valid
-    // ISO 8601 UTC strings so that Date.parse() gives a reliable result.
-    // The result is then converted to Unix epoch seconds (integer) to match
-    // the bigint column type that request_start / request_end now use.
-    const toUnixSeconds = (stormglassTimestamp: string): number =>
-      Math.floor(new Date(stormglassTimestamp.replace(' ', 'T') + 'Z').getTime() / 1000);
-
+    // meta.start / meta.end arrive as 'YYYY-MM-DD HH:MM' — toUnixSeconds()
+    // (imported from APIcall.ts) converts them to Unix epoch seconds for the
+    // bigint columns.
     await db.insert(metadata).values({
       source:        'tides',
       cost:          String(meta.cost),
