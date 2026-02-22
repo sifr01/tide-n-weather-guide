@@ -19,6 +19,12 @@ interface TidesPageProps {
   /** Rows from the `tides` DB table — passed down from App so no additional
    *  DB call is needed when the user navigates to this page. */
   tides: TideRow[];
+  /**
+   * Callback that re-fetches the tides rows from get-data and updates the
+   * tides state in App.  Called after a successful tides-button POST so the
+   * table updates in-place without a full page reload.
+   */
+  refetchTides: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,16 +75,16 @@ function formatUnixTime(unixSeconds: number): {
 // Component
 // ---------------------------------------------------------------------------
 
-const TidesPage: React.FC<TidesPageProps> = ({ tides }) => {
+const TidesPage: React.FC<TidesPageProps> = ({ tides, refetchTides }) => {
   // Button state for the "Refresh tides" API call.
   const [status,  setStatus]  = useState<ButtonStatus>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
   // -------------------------------------------------------------------------
   // Calls the tides-button Netlify function to refresh the DB cache from the
-  // Stormglass API.  The user must reload the page (or navigate away and
-  // back) to see the updated data — consistent with the cache-then-serve
-  // pattern and avoids an unexpected in-place table mutation.
+  // Stormglass API, then immediately re-fetches the updated rows from
+  // get-data via the refetchTides callback so the table updates in-place
+  // without requiring a page reload.
   // -------------------------------------------------------------------------
   const handleRefresh = async () => {
     setStatus('loading');
@@ -87,6 +93,9 @@ const TidesPage: React.FC<TidesPageProps> = ({ tides }) => {
       const response = await fetch('/.netlify/functions/tides-button', { method: 'POST' });
       const data = await response.json();
       if (response.ok && data.success) {
+        // Re-fetch the updated tides rows from the DB so the table reflects
+        // the newly inserted data immediately.
+        await refetchTides();
         setStatus('success');
         // Show a summary: how many rows were inserted and which station/datum.
         setMessage(

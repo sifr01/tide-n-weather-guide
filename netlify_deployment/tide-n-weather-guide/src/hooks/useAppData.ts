@@ -21,6 +21,12 @@ export interface AppData {
   loading:      boolean;
   /** Non-null when the fetch failed. */
   error:        string | null;
+  /**
+   * Re-fetches only the tides data from get-data and updates state.
+   * Called by TidesPage after a successful tides-button POST so the table
+   * updates in-place without a full page reload.
+   */
+  refetchTides: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -33,6 +39,11 @@ export function useAppData(): AppData {
   const [loading,      setLoading]      = useState<boolean>(true);
   const [error,        setError]        = useState<string | null>(null);
 
+  // ---------------------------------------------------------------------------
+  // fetchData — called on mount to populate all state from get-data.
+  // Extracted into a named async function so refetchTides() can also call it
+  // (or a subset of it) without duplicating the fetch logic.
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     // Fetch once on mount — no dependencies means this never re-fires.
     const fetchData = async () => {
@@ -59,5 +70,32 @@ export function useAppData(): AppData {
     fetchData();
   }, []); // empty array = run once on mount
 
-  return { tides, weatherSolar, loading, error };
+  // ---------------------------------------------------------------------------
+  // refetchTides — re-calls get-data and updates only the tides state.
+  // Called by TidesPage after a successful tides-button POST so the table
+  // refreshes in-place without a full page reload.
+  // weatherSolar state is left untouched because only tides were updated.
+  // ---------------------------------------------------------------------------
+  const refetchTides = async (): Promise<void> => {
+    try {
+      const response = await fetch('/.netlify/functions/get-data');
+      const json = await response.json();
+
+      if (!response.ok) {
+        // Surface but don't overwrite the main error banner — the initial
+        // load was fine; this is a post-refresh failure.
+        console.error('refetchTides: get-data error', json.error);
+        return;
+      }
+
+      // Replace tides state with the freshly loaded rows.
+      setTides(json.tides ?? []);
+    } catch (err) {
+      // Log but don't update the global error state — the table will simply
+      // remain showing the pre-refresh data until the user tries again.
+      console.error('refetchTides: network error', err);
+    }
+  };
+
+  return { tides, weatherSolar, loading, error, refetchTides };
 }

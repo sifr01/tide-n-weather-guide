@@ -24,7 +24,7 @@ import './App.css';
 function App() {
   // Fetch tides + weatherSolar once on mount; pass the results down as props
   // so child pages never need to make their own DB calls.
-  const { tides, weatherSolar, loading, error } = useAppData();
+  const { tides, weatherSolar, loading, error, refetchTides } = useAppData();
 
   return (
     <BrowserRouter>
@@ -48,7 +48,7 @@ function App() {
         <Route path="/"        element={<Home />} />
         {/* Tides and Weather receive pre-loaded data via props — no additional
             fetch is triggered when the user switches between tabs. */}
-        <Route path="/tides"   element={<TidesPage   tides={tides}               />} />
+        <Route path="/tides"   element={<TidesPage   tides={tides}  refetchTides={refetchTides}  />} />
         <Route path="/weather" element={<WeatherPage  weatherSolar={weatherSolar} />} />
       </Routes>
     </BrowserRouter>
