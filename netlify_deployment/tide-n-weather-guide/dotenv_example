@@ -1,6 +1,11 @@
 # Database URL for serverless functions (server-side only, not exposed to browser)
 DATABASE_URL="postgresql://neondb_owner:......"
 
+# Stormglass API key — required when USE_MOCK_DATA is not "true".
+# Obtain your key from https://dashboard.stormglass.io
+# Never commit the real value — keep it in .env.local (git-ignored).
+API_KEY="your_stormglass_api_key_here"
+
 # Set to "true" to use local JSON mock files instead of hitting the live
 # Stormglass API.  This avoids consuming API quota during local development.
 # Any value other than the exact string "true" is treated as false (live mode).
