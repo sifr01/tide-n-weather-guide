@@ -1,5 +1,8 @@
 // client.js
-
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { Provider } from 'react-redux';
+import store from './store.js';
 import { displayTideTimesTable } from './displayTideTimesTable.js';
 import { displayWeatherAndSolar } from './displayWeatherAndSolar.js';
 import { displayErrorMessage } from './displayErrorMessages.js';
@@ -22,29 +25,23 @@ const weatherDBquery = document.querySelector('#weather-DB-query');
 const tideTimesTab = document.getElementById('tide-times-DB-query');
 const weatherTab = document.getElementById('weather-DB-query');
 
-// Event listener for tide times database query (SELECT)
+// Initialize React components
+const tideTimesRoot = createRoot(document.getElementById('tide-times-data'));
+const weatherRoot = createRoot(document.getElementById('weather-solar-data'));
+
+// Event listener for tide times tab
 tideTimesDBquery.addEventListener('click', event => {
     console.log("tideTimesDBquery button clicked");
     switchTab(tideTimesTab);
-    fetch("/tideTimesDBquery")
-        .then(response => {
-            console.log("Response received:", response);
-            if (!response.ok) {
-                throw new Error('Network response was not ok ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log("Tide times data received:", data.data);
-            displayTideTimesTable(data.data, 'tide-times-data'); // Display tide times data
-            showTable(tideTimesTable); // Ensure the tide times table is shown
-        })
-        .catch(error => {
-            console.error('There was a problem with the fetch operation:', error);
-        });
+    showTable(tideTimesTable);
+    tideTimesRoot.render(
+        <Provider store={store}>
+            <TideTimesTable />
+        </Provider>
+    );
 });
 
-// Event listener for weather data database query (SELECT)
+// Event listener for weather data tab
 weatherDBquery.addEventListener('click', event => {
     console.log("weather-data-DB-query button clicked");
     switchTab(weatherTab);

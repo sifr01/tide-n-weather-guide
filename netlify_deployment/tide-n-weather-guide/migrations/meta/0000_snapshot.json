@@ -1,0 +1,562 @@
+{
+  "id": "9a813774-f994-47a1-a1da-68c3e7bb19c7",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.metadata": {
+      "name": "metadata",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "metadata_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "source": {
+          "name": "source",
+          "type": "meta_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fetched_at": {
+          "name": "fetched_at",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost": {
+          "name": "cost",
+          "type": "numeric(2, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_start": {
+          "name": "request_start",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "daily_quota": {
+          "name": "daily_quota",
+          "type": "numeric(5, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "datum": {
+          "name": "datum",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_end": {
+          "name": "request_end",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "offset": {
+          "name": "offset",
+          "type": "numeric(5, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_count": {
+          "name": "request_count",
+          "type": "numeric(5, 0)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "station_lat": {
+          "name": "station_lat",
+          "type": "numeric(6, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "station_lon": {
+          "name": "station_lon",
+          "type": "numeric(6, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "station_name": {
+          "name": "station_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "station_source": {
+          "name": "station_source",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parameters": {
+          "name": "parameters",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.solar": {
+      "name": "solar",
+      "schema": "",
+      "columns": {
+        "time": {
+          "name": "time",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "uv_index_noaa": {
+          "name": "uv_index_noaa",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uv_index_sg": {
+          "name": "uv_index_sg",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.tides": {
+      "name": "tides",
+      "schema": "",
+      "columns": {
+        "time": {
+          "name": "time",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "height": {
+          "name": "height",
+          "type": "numeric(18, 15)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "tide_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.weather": {
+      "name": "weather",
+      "schema": "",
+      "columns": {
+        "time": {
+          "name": "time",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "gust_ecmwf": {
+          "name": "gust_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gust_noaa": {
+          "name": "gust_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gust_sg": {
+          "name": "gust_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_ecmwf": {
+          "name": "pressure_ecmwf",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_ecmwf_aifs": {
+          "name": "pressure_ecmwf_aifs",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_noaa": {
+          "name": "pressure_noaa",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_sg": {
+          "name": "pressure_sg",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_temp_meto": {
+          "name": "water_temp_meto",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_temp_noaa": {
+          "name": "water_temp_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_temp_sg": {
+          "name": "water_temp_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_dwd": {
+          "name": "wave_height_dwd",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_ecmwf": {
+          "name": "wave_height_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_meteo": {
+          "name": "wave_height_meteo",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_noaa": {
+          "name": "wave_height_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_sg": {
+          "name": "wave_height_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_dwd": {
+          "name": "wind_dir_dwd",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_ecmwf": {
+          "name": "wind_dir_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_ecmwf_aifs": {
+          "name": "wind_dir_ecmwf_aifs",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_noaa": {
+          "name": "wind_dir_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_sg": {
+          "name": "wind_dir_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_dwd": {
+          "name": "wind_speed_dwd",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_ecmwf": {
+          "name": "wind_speed_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_ecmwf_aifs": {
+          "name": "wind_speed_ecmwf_aifs",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_noaa": {
+          "name": "wind_speed_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_sg": {
+          "name": "wind_speed_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.meta_source": {
+      "name": "meta_source",
+      "schema": "public",
+      "values": [
+        "tides",
+        "weather",
+        "solar"
+      ]
+    },
+    "public.tide_type": {
+      "name": "tide_type",
+      "schema": "public",
+      "values": [
+        "high",
+        "low"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {
+    "public.weather_solar": {
+      "columns": {
+        "time": {
+          "name": "time",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "gust_ecmwf": {
+          "name": "gust_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gust_noaa": {
+          "name": "gust_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gust_sg": {
+          "name": "gust_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_ecmwf": {
+          "name": "pressure_ecmwf",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_ecmwf_aifs": {
+          "name": "pressure_ecmwf_aifs",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_noaa": {
+          "name": "pressure_noaa",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pressure_sg": {
+          "name": "pressure_sg",
+          "type": "numeric(6, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_temp_meto": {
+          "name": "water_temp_meto",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_temp_noaa": {
+          "name": "water_temp_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "water_temp_sg": {
+          "name": "water_temp_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_dwd": {
+          "name": "wave_height_dwd",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_ecmwf": {
+          "name": "wave_height_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_meteo": {
+          "name": "wave_height_meteo",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_noaa": {
+          "name": "wave_height_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wave_height_sg": {
+          "name": "wave_height_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_dwd": {
+          "name": "wind_dir_dwd",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_ecmwf": {
+          "name": "wind_dir_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_ecmwf_aifs": {
+          "name": "wind_dir_ecmwf_aifs",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_noaa": {
+          "name": "wind_dir_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_dir_sg": {
+          "name": "wind_dir_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_dwd": {
+          "name": "wind_speed_dwd",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_ecmwf": {
+          "name": "wind_speed_ecmwf",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_ecmwf_aifs": {
+          "name": "wind_speed_ecmwf_aifs",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_noaa": {
+          "name": "wind_speed_noaa",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "wind_speed_sg": {
+          "name": "wind_speed_sg",
+          "type": "numeric(5, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uv_index_noaa": {
+          "name": "uv_index_noaa",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "uv_index_sg": {
+          "name": "uv_index_sg",
+          "type": "numeric(4, 2)",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "definition": "select \"weather\".\"time\", \"weather\".\"gust_ecmwf\", \"weather\".\"gust_noaa\", \"weather\".\"gust_sg\", \"weather\".\"pressure_ecmwf\", \"weather\".\"pressure_ecmwf_aifs\", \"weather\".\"pressure_noaa\", \"weather\".\"pressure_sg\", \"weather\".\"water_temp_meto\", \"weather\".\"water_temp_noaa\", \"weather\".\"water_temp_sg\", \"weather\".\"wave_height_dwd\", \"weather\".\"wave_height_ecmwf\", \"weather\".\"wave_height_meteo\", \"weather\".\"wave_height_noaa\", \"weather\".\"wave_height_sg\", \"weather\".\"wind_dir_dwd\", \"weather\".\"wind_dir_ecmwf\", \"weather\".\"wind_dir_ecmwf_aifs\", \"weather\".\"wind_dir_noaa\", \"weather\".\"wind_dir_sg\", \"weather\".\"wind_speed_dwd\", \"weather\".\"wind_speed_ecmwf\", \"weather\".\"wind_speed_ecmwf_aifs\", \"weather\".\"wind_speed_noaa\", \"weather\".\"wind_speed_sg\", \"solar\".\"uv_index_noaa\", \"solar\".\"uv_index_sg\" from \"weather\" left join \"solar\" on \"solar\".\"time\" = \"weather\".\"time\"",
+      "name": "weather_solar",
+      "schema": "public",
+      "isExisting": false,
+      "materialized": false
+    }
+  },
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -1,0 +1,33 @@
+# netlify.toml — Netlify build & dev configuration
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+# ---------------------------------------------------------------------------
+# Build settings (used by Netlify CI and `netlify build`)
+# ---------------------------------------------------------------------------
+[build]
+  # Directory that contains the compiled React app after `npm run build`
+  publish = "build"
+
+  # Directory where Netlify functions are defined
+  functions = "netlify/functions"
+
+  # Command Netlify runs to produce the published output
+  command = "npm run build"
+
+# ---------------------------------------------------------------------------
+# Local dev settings (used by `netlify dev`)
+# ---------------------------------------------------------------------------
+[dev]
+  # The command that starts the React dev server (CRA default port 3000)
+  command = "npm run start"
+
+  # The port the React dev server listens on — Netlify CLI proxies it
+  targetPort = 3000
+
+  # The port that `netlify dev` itself exposes (functions + React together)
+  # Browse to http://localhost:8888 when developing locally
+  port = 8888
+
+  # Treat the project as a Create React App so the CLI applies the correct
+  # framework-specific defaults (env variable injection, etc.)
+  framework = "#custom"

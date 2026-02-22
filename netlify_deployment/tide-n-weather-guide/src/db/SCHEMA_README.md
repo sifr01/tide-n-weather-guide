@@ -1,0 +1,411 @@
+# Database Schema — Tide & Weather Guide
+
+> **Stack:** PostgreSQL (Neon) · Drizzle ORM · Netlify
+
+---
+
+## Table of Contents
+
+1. [Overview](#overview)
+2. [Design Decisions](#design-decisions)
+3. [ERD Diagram](#erd-diagram)
+4. [Table Reference](#table-reference)
+   - [tides](#tides)
+   - [weather](#weather)
+   - [solar](#solar)
+   - [metadata](#metadata)
+5. [View Reference](#view-reference)
+   - [weather_solar](#weather_solar)
+6. [Data Mapping Tables](#data-mapping-tables)
+   - [tides — JSON → DB](#tides--json--db)
+   - [weather — JSON → DB](#weather--json--db)
+   - [solar — JSON → DB](#solar--json--db)
+   - [metadata — JSON → DB (all endpoints)](#metadata--json--db-all-endpoints)
+7. [Enums](#enums)
+8. [API Poll Cycle](#api-poll-cycle)
+
+---
+
+## Overview
+
+Three Stormglass API endpoints feed the database:
+
+| Endpoint | Stormglass path | Target table(s) |
+|---|---|---|
+| Tidal extremes | `/v2/tide/extremes/point` | `tides`, `metadata` |
+| Hourly weather | `/v2/weather/point` | `weather`, `metadata` |
+| Hourly solar / UV | `/v2/solar/point` | `solar`, `metadata` |
+
+Solar data is stored in its own **`solar`** table (one row per UTC hour).
+The `weather` and `solar` tables share the same time-series granularity and
+are joined at the database level via the **`weather_solar` view** (LEFT JOIN on
+`time`). The application no longer merges the two responses in JavaScript.
+
+---
+
+## Design Decisions
+
+| Decision | Rationale |
+|---|---|
+| **Unix epoch (bigint) as PKs for `tides`, `weather`, and `solar`** | Natural deduplication key: re-inserting the same API window is idempotent with `ON CONFLICT DO NOTHING`. No synthetic surrogate needed. |
+| **`tides`, `weather`, and `solar` are flushed on each poll** | The API returns a rolling forecast window; stale forecasts are replaced entirely. A truncate + bulk insert is simpler and faster than row-level upserts. |
+| **`metadata` is append-only** | Provides an audit trail of every API call (cost, quota usage, timestamps). Rows are never deleted. |
+| **`solar` is a separate table (not merged into `weather`)** | Keeps each API response in its own table; the join is expressed as a DB view (`weather_solar`) so the computation lives in the database, not in application JS. |
+| **`weather_solar` DB view performs the JOIN** | Shifts the join computation to the database engine. The application queries the view like a plain table and receives already-joined rows. |
+| **`tide_type` enum ('high' \| 'low')** | Enforces data integrity at the DB level; avoids silent insertion of invalid strings. |
+| **`meta_source` enum ('tides' \| 'weather' \| 'solar')** | Allows a single `metadata` table to record meta from all three endpoints while still being queryable by source. |
+| **`real` (float4) for weather/solar measurements** | Single-precision is sufficient for the decimal precision returned by the API (2–4 significant figures) and uses half the storage of `double precision`. |
+| **`numeric(7,4)` for tide height** | Tide heights in the sample range from ~−1.4 m to ~+1.5 m with 4 decimal places; `numeric` avoids float rounding for a value that may drive business logic. |
+| **All weather and solar measurement columns nullable** | Not every source model supplies every parameter for every hour (evidenced in the API samples). `NOT NULL` would cause insertions to fail for sparse rows. |
+| **`ecmwf:aifs` stored as `ecmwf_aifs`** | Colons are not valid in SQL identifiers; `_` is the conventional replacement. |
+| **`station.distance` omitted from metadata** | Per spec — the API always returns `0` for a point query. |
+| **`meta.lat` / `meta.lng` omitted from metadata** | Per spec — these always equal `station_lat` / `station_lon`; storing them would be redundant. |
+| **`parameters` column (text) in metadata** | The weather and solar endpoints accept a `params` query-string; storing the actual list used makes the audit row self-describing. `null` for tides (no params key in its meta). |
+
+---
+
+## ERD Diagram
+
+```mermaid
+erDiagram
+      TIDES {
+            BIGINT time PK "Unix epoch sec"
+            NUMERIC height "numeric(7,4)"
+            tide_type type
+      }
+
+      WEATHER {
+            BIGINT time PK "Unix epoch sec"
+            REAL gust_ecmwf
+            REAL gust_noaa
+            REAL gust_sg
+            REAL pressure_ecmwf
+            REAL pressure_ecmwf_aifs
+            REAL pressure_noaa
+            REAL pressure_sg
+            REAL water_temp_meto
+            REAL water_temp_noaa
+            REAL water_temp_sg
+            REAL wave_height_dwd
+            REAL wave_height_ecmwf
+            REAL wave_height_meteo
+            REAL wave_height_noaa
+            REAL wave_height_sg
+            REAL wind_dir_dwd
+            REAL wind_dir_ecmwf
+            REAL wind_dir_ecmwf_aifs
+            REAL wind_dir_noaa
+            REAL wind_dir_sg
+            REAL wind_speed_dwd
+            REAL wind_speed_ecmwf
+            REAL wind_speed_ecmwf_aifs
+            REAL wind_speed_noaa
+            REAL wind_speed_sg
+      }
+
+      SOLAR {
+            BIGINT time PK "Unix epoch sec"
+            REAL uv_index_noaa
+            REAL uv_index_sg
+      }
+
+      WEATHER_SOLAR_VIEW {
+            BIGINT time "join key (LEFT JOIN)"
+            REAL gust_ecmwf
+            REAL gust_noaa
+            REAL gust_sg
+            REAL pressure_ecmwf
+            REAL pressure_ecmwf_aifs
+            REAL pressure_noaa
+            REAL pressure_sg
+            REAL water_temp_meto
+            REAL water_temp_noaa
+            REAL water_temp_sg
+            REAL wave_height_dwd
+            REAL wave_height_ecmwf
+            REAL wave_height_meteo
+            REAL wave_height_noaa
+            REAL wave_height_sg
+            REAL wind_dir_dwd
+            REAL wind_dir_ecmwf
+            REAL wind_dir_ecmwf_aifs
+            REAL wind_dir_noaa
+            REAL wind_dir_sg
+            REAL wind_speed_dwd
+            REAL wind_speed_ecmwf
+            REAL wind_speed_ecmwf_aifs
+            REAL wind_speed_noaa
+            REAL wind_speed_sg
+            REAL uv_index_noaa "from SOLAR"
+            REAL uv_index_sg "from SOLAR"
+      }
+
+      METADATA {
+            BIGINT id PK "identity"
+            meta_source source
+            NUMERIC cost
+            VARCHAR request_start
+            NUMERIC daily_quota
+            VARCHAR datum
+            VARCHAR request_end
+            NUMERIC offset
+            NUMERIC request_count
+            NUMERIC station_lat
+            NUMERIC station_lon
+            VARCHAR station_name
+            VARCHAR station_source
+            TEXT parameters
+      }
+
+      WEATHER ||--o| SOLAR : "LEFT JOIN on time (via weather_solar view)"
+      %% No FK relationships — metadata is an audit log
+```
+
+---
+
+## Table Reference
+
+### tides
+
+Stores discrete tidal extreme events (high water / low water).
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `time` | `BIGINT` | NO — PK | Unix epoch seconds |
+| `height` | `NUMERIC(7,4)` | NO | Metres above/below MSL; negative = below datum |
+| `type` | `tide_type` ENUM | NO | `'high'` or `'low'` |
+
+---
+
+### weather
+
+One row per UTC hour from `/v2/weather/point`. Contains only weather parameters — UV index has been moved to the dedicated [`solar`](#solar) table.
+
+| Column | Type | Nullable | Source parameter |
+|---|---|---|---|
+| `time` | `BIGINT` | NO — PK | `hours[].time` (converted to Unix epoch) |
+| `gust_ecmwf` | `REAL` | YES | `gust.ecmwf` |
+| `gust_noaa` | `REAL` | YES | `gust.noaa` |
+| `gust_sg` | `REAL` | YES | `gust.sg` |
+| `pressure_ecmwf` | `REAL` | YES | `pressure.ecmwf` |
+| `pressure_ecmwf_aifs` | `REAL` | YES | `pressure['ecmwf:aifs']` |
+| `pressure_noaa` | `REAL` | YES | `pressure.noaa` |
+| `pressure_sg` | `REAL` | YES | `pressure.sg` |
+| `water_temp_meto` | `REAL` | YES | `waterTemperature.meto` |
+| `water_temp_noaa` | `REAL` | YES | `waterTemperature.noaa` |
+| `water_temp_sg` | `REAL` | YES | `waterTemperature.sg` |
+| `wave_height_dwd` | `REAL` | YES | `waveHeight.dwd` |
+| `wave_height_ecmwf` | `REAL` | YES | `waveHeight.ecmwf` |
+| `wave_height_meteo` | `REAL` | YES | `waveHeight.meteo` |
+| `wave_height_noaa` | `REAL` | YES | `waveHeight.noaa` |
+| `wave_height_sg` | `REAL` | YES | `waveHeight.sg` |
+| `wind_dir_dwd` | `REAL` | YES | `windDirection.dwd` |
+| `wind_dir_ecmwf` | `REAL` | YES | `windDirection.ecmwf` |
+| `wind_dir_ecmwf_aifs` | `REAL` | YES | `windDirection['ecmwf:aifs']` |
+| `wind_dir_noaa` | `REAL` | YES | `windDirection.noaa` |
+| `wind_dir_sg` | `REAL` | YES | `windDirection.sg` |
+| `wind_speed_dwd` | `REAL` | YES | `windSpeed.dwd` |
+| `wind_speed_ecmwf` | `REAL` | YES | `windSpeed.ecmwf` |
+| `wind_speed_ecmwf_aifs` | `REAL` | YES | `windSpeed['ecmwf:aifs']` |
+| `wind_speed_noaa` | `REAL` | YES | `windSpeed.noaa` |
+| `wind_speed_sg` | `REAL` | YES | `windSpeed.sg` |
+
+> UV index columns (`uv_index_noaa`, `uv_index_sg`) were removed from this table and now live in [`solar`](#solar). Query them via the [`weather_solar`](#weather_solar) view.
+
+---
+
+### solar
+
+One row per UTC hour from `/v2/solar/point`. Aligned with `weather` on `time`.
+
+| Column | Type | Nullable | Source parameter |
+|---|---|---|---|
+| `time` | `BIGINT` | NO — PK | `hours[].time` (converted to Unix epoch) |
+| `uv_index_noaa` | `NUMERIC(4,2)` | YES | `uvIndex.noaa` |
+| `uv_index_sg` | `NUMERIC(4,2)` | YES | `uvIndex.sg` |
+
+---
+
+## View Reference
+
+### weather_solar
+
+A read-only view that LEFT JOINs `weather` and `solar` on `time`. The application queries this view to obtain fully combined hourly data without any JavaScript-side merging.
+
+```sql
+SELECT w.*, s.uv_index_noaa, s.uv_index_sg
+FROM weather w
+LEFT JOIN solar s ON s.time = w.time;
+```
+
+| Column | Source |
+|---|---|
+| All `weather` columns | `weather` table |
+| `uv_index_noaa` | `solar` table (NULL if no matching solar row) |
+| `uv_index_sg` | `solar` table (NULL if no matching solar row) |
+
+> Defined in `schema.ts` using the Drizzle query-builder form (`.as(qb => ...)`), so `npm run db:generate` will emit a `CREATE VIEW` statement in the migration file automatically.
+
+---
+
+### metadata
+
+Append-only audit log — one row per API call.
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | `BIGINT` | NO — PK | Auto-generated identity |
+| `source` | `meta_source` ENUM | NO | `'tides'`, `'weather'`, or `'solar'` |
+| `cost` | `NUMERIC(10,4)` | YES | API credit cost for the request |
+| `request_start` | `VARCHAR(50)` | YES | `meta.start` — window start |
+| `daily_quota` | `NUMERIC(10,0)` | YES | `meta.dailyQuota` — tides only |
+| `datum` | `VARCHAR(50)` | YES | `meta.datum` — tides only (e.g. `"MSL"`) |
+| `request_end` | `VARCHAR(50)` | YES | `meta.end` — tides only |
+| `offset` | `NUMERIC(5,0)` | YES | `meta.offset` — tides only (UTC offset) |
+| `request_count` | `NUMERIC(10,0)` | YES | `meta.requestCount` — tides only |
+| `station_lat` | `NUMERIC(9,6)` | YES | `meta.station.lat` — tides only |
+| `station_lon` | `NUMERIC(9,6)` | YES | `meta.station.lng` — tides only |
+| `station_name` | `VARCHAR(255)` | YES | `meta.station.name` — tides only |
+| `station_source` | `VARCHAR(100)` | YES | `meta.station.source` — tides only |
+| `parameters` | `TEXT` | YES | Comma-separated params query string — weather/solar only |
+
+---
+
+## Data Mapping Tables
+
+### tides — JSON → DB
+
+Source: `data[]` array from `/v2/tide/extremes/point`
+
+| JSON key path | DB column | Type conversion |
+|---|---|---|
+| `data[i].time` | `time` | ISO 8601 → Unix epoch (seconds) |
+| `data[i].height` | `height` | float → `NUMERIC(7,4)` |
+| `data[i].type` | `type` | string → `tide_type` enum |
+
+---
+
+### weather — JSON → DB
+
+Source: `hours[]` array from `/v2/weather/point`
+
+| JSON key path | DB column | Notes |
+|---|---|---|
+| `hours[i].time` | `time` | ISO 8601 → Unix epoch (seconds) |
+| `hours[i].gust.ecmwf` | `gust_ecmwf` | m/s |
+| `hours[i].gust.noaa` | `gust_noaa` | m/s |
+| `hours[i].gust.sg` | `gust_sg` | m/s |
+| `hours[i].pressure.ecmwf` | `pressure_ecmwf` | hPa |
+| `hours[i].pressure['ecmwf:aifs']` | `pressure_ecmwf_aifs` | hPa |
+| `hours[i].pressure.noaa` | `pressure_noaa` | hPa |
+| `hours[i].pressure.sg` | `pressure_sg` | hPa |
+| `hours[i].waterTemperature.meto` | `water_temp_meto` | °C |
+| `hours[i].waterTemperature.noaa` | `water_temp_noaa` | °C |
+| `hours[i].waterTemperature.sg` | `water_temp_sg` | °C |
+| `hours[i].waveHeight.dwd` | `wave_height_dwd` | m |
+| `hours[i].waveHeight.ecmwf` | `wave_height_ecmwf` | m |
+| `hours[i].waveHeight.meteo` | `wave_height_meteo` | m |
+| `hours[i].waveHeight.noaa` | `wave_height_noaa` | m |
+| `hours[i].waveHeight.sg` | `wave_height_sg` | m |
+| `hours[i].windDirection.dwd` | `wind_dir_dwd` | degrees true |
+| `hours[i].windDirection.ecmwf` | `wind_dir_ecmwf` | degrees true |
+| `hours[i].windDirection['ecmwf:aifs']` | `wind_dir_ecmwf_aifs` | degrees true |
+| `hours[i].windDirection.noaa` | `wind_dir_noaa` | degrees true |
+| `hours[i].windDirection.sg` | `wind_dir_sg` | degrees true |
+| `hours[i].windSpeed.dwd` | `wind_speed_dwd` | m/s |
+| `hours[i].windSpeed.ecmwf` | `wind_speed_ecmwf` | m/s |
+| `hours[i].windSpeed['ecmwf:aifs']` | `wind_speed_ecmwf_aifs` | m/s |
+| `hours[i].windSpeed.noaa` | `wind_speed_noaa` | m/s |
+| `hours[i].windSpeed.sg` | `wind_speed_sg` | m/s |
+
+---
+
+### solar — JSON → DB
+
+Source: `hours[]` array from `/v2/solar/point`
+Inserted directly into the `solar` table. The join with `weather` is performed by the `weather_solar` DB view — no JavaScript merging.
+
+| JSON key path | DB column | Notes |
+|---|---|---|
+| `hours[i].time` | `time` | ISO 8601 → Unix epoch (seconds) — PK and join key |
+| `hours[i].uvIndex.noaa` | `uv_index_noaa` | dimensionless |
+| `hours[i].uvIndex.sg` | `uv_index_sg` | dimensionless |
+
+---
+
+### metadata — JSON → DB (all endpoints)
+
+| JSON key path | DB column | Endpoint(s) | Notes |
+|---|---|---|---|
+| *(application-set)* | `source` | all | `'tides'` \| `'weather'` \| `'solar'` |
+| `meta.cost` | `cost` | all | API credit cost |
+| `meta.start` | `request_start` | all | Window start string |
+| `meta.dailyQuota` | `daily_quota` | tides | — |
+| `meta.datum` | `datum` | tides | e.g. `"MSL"` |
+| `meta.end` | `request_end` | tides | Window end string |
+| `meta.offset` | `offset` | tides | UTC offset (hours) |
+| `meta.requestCount` | `request_count` | tides | Cumulative requests today |
+| `meta.station.lat` | `station_lat` | tides | Same as query lat |
+| `meta.station.lng` | `station_lon` | tides | Same as query lng |
+| `meta.station.name` | `station_name` | tides | e.g. `"viana"` |
+| `meta.station.source` | `station_source` | tides | e.g. `"sg"` |
+| `meta.station.distance` | *(omitted)* | tides | Always `0` for a point query |
+| `meta.lat` | *(omitted)* | tides | Duplicate of `station_lat` |
+| `meta.lng` | *(omitted)* | tides | Duplicate of `station_lon` |
+| *(query-string `params`)* | `parameters` | weather, solar | Comma-separated param list |
+
+---
+
+## Enums
+
+### `tide_type`
+
+| Value | Meaning |
+|---|---|
+| `high` | High-water tidal extreme |
+| `low` | Low-water tidal extreme |
+
+### `meta_source`
+
+| Value | Meaning |
+|---|---|
+| `tides` | Row originated from `/v2/tide/extremes/point` |
+| `weather` | Row originated from `/v2/weather/point` |
+| `solar` | Row originated from `/v2/solar/point` |
+
+---
+
+## API Poll Cycle
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Poll trigger (scheduled / on-demand)               │
+└────────────────────────┬────────────────────────────┘
+                         │
+            ┌────────────▼────────────┐
+            │  Call all 3 endpoints   │
+            │  in parallel            │
+            └────────────┬────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         ▼               ▼               ▼
+   tides API        weather API      solar API
+         │               │               │
+         ▼               ▼               ▼
+  TRUNCATE tides   TRUNCATE weather  TRUNCATE solar
+  INSERT tides     INSERT weather    INSERT solar
+         │               │               │
+         ▼               ▼               ▼
+  INSERT metadata  INSERT metadata  INSERT metadata
+  (source='tides') (source='weather')(source='solar')
+                         │               │
+                         └───────┬───────┘
+                                 ▼
+                        weather_solar VIEW
+                     (DB-level LEFT JOIN on time)
+                     queried by app at read time
+```
+
+- `tides`, `weather`, and `solar` are **flushed** (TRUNCATE) before each repopulation.
+- `metadata` is **never truncated** — rows accumulate as an audit trail.
+- The join between `weather` and `solar` is expressed as a **database view** (`weather_solar`), not JavaScript code.
