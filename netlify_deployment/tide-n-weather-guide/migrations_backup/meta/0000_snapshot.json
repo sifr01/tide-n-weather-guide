@@ -1,5 +1,5 @@
 {
-  "id": "9a813774-f994-47a1-a1da-68c3e7bb19c7",
+  "id": "e7d4a197-9555-4386-9cdf-6d68d980843f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -29,12 +29,6 @@
           "name": "source",
           "type": "meta_source",
           "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fetched_at": {
-          "name": "fetched_at",
-          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
