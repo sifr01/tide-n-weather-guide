@@ -1,49 +1,45 @@
-# Getting Started with Create React App
+# README
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Architecture Overview
 
-## Available Scripts
+This document describes the architecture of the Tide & Weather Guide application.
 
-In the project directory, you can run:
+### Mermaid Diagram
 
-### `npm start`
+```mermaid
+graph TD
+    subgraph Backend
+        NodeJS[Node.js Backend]
+        ProcessData[Process Data]
+        DataStore[(Data Store)]
+    end
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+    subgraph Frontend
+        APIButton[API Call Button]
+        ReactState[React useState]
+        Table[Table Presentation]
+    end
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+    subgraph stormglass.io
+        APIserver[API server]
+    end
 
-### `npm test`
+    APIButton --> APIserver
+    APIserver -->NodeJS["returns JSON response"]
+    NodeJS --> ProcessData
+    ProcessData --> DataStore["Data store"]
+    DataStore --> ReactState["React State"]
+    ReactState --> Table["Table: display data"]
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Description
+- The frontend includes an API call button that triggers a request to the backend.
+- The backend (Node.js) fetches data from stormglass.io, processes the JSON response, and stores it in the data store.
+- The frontend reads from the data store using React's useState and presents the data in a table.
 
-### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
-
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
-
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Resources
+- [Netlify-DB](https://docs.netlify.com/build/data-and-storage/netlify-db/)
 
 ## Dev commands:
 
@@ -60,5 +56,6 @@ DROP TYPE meta_source, tide_type;
 ``` bash
 npm run db:generate
 npm run db:migrate
-npm run dev
 ```
+
+To run the server locally for development run: `npm run dev` and navigate to localhost:8888
