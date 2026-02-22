@@ -17,16 +17,12 @@
 import 'dotenv/config';
 
 // ---------------------------------------------------------------------------
-// Developer toggle — set to true to use local JSON mock files instead of
-// making a real network request to the Stormglass API.
-//
-// WHY this lives here (not in .env):
-//   • It is a source-code decision, not a deployment secret.
-//   • Changing it requires a deliberate code change + redeploy, which is
-//     intentional — it should never be accidentally left in mock mode in
-//     production without a visible code diff.
+// Developer toggle — read from the USE_MOCK_DATA environment variable.
+// Set USE_MOCK_DATA="true" in .env (local) or the Netlify environment
+// dashboard to use local JSON mock files instead of the live API.
+// Any value other than the string "true" is treated as false.
 // ---------------------------------------------------------------------------
-export const USE_MOCK_DATA = true;
+export const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 
 // ---------------------------------------------------------------------------
 // Hard-coded GPS co-ordinates for station "Viana do Castelo", Portugal.
