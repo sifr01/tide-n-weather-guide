@@ -44,3 +44,20 @@ You don’t have to ever use `eject`. The curated feature set is suitable for sm
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+## Dev commands:
+
+``` bash
+rm -r ./migrations
+```
+
+``` SQL 
+DROP TABLE tides, solar, weather, metadata;
+DROP TYPE meta_source, tide_type;
+```
+
+``` bash
+npm run db:generate
+npm run db:migrate
+npm run dev
+```
