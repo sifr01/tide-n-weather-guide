@@ -49,7 +49,7 @@ import { tides, metadata } from '../../src/db/schema';
 // Shared API module — owns the fetch logic, API key, GPS constants,
 // USE_MOCK_DATA flag, and all response type definitions.
 // ---------------------------------------------------------------------------
-import { callAPI, STORMGLASS_BASE, LAT, LNG, TidesResponse, toUnixSeconds, USE_MOCK_DATA } from './APIcall';
+import { callAPI, STORMGLASS_BASE, LAT, LNG, TidesResponse, toUnixSeconds } from './APIcall';
 import { checkRateLimit } from './checkRateLimit';
 
 // ---------------------------------------------------------------------------
@@ -106,21 +106,23 @@ export const handler: Handler = async () => {
     // Query the metadata table for the last time the tides endpoint was
     // called.  If it was less than TIDES_COOLDOWN_SECONDS ago, return 429
     // immediately without hitting the Stormglass API.
-    // USE_MOCK_DATA bypasses the check so development is never blocked.
-    if (!USE_MOCK_DATA) {
-      const rateLimit = await checkRateLimit(db, 'tides', TIDES_COOLDOWN_SECONDS);
-      if (!rateLimit.allowed) {
-        return {
-          statusCode: 429,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            success:           false,
-            rateLimited:       true,
-            retryAfterSeconds: rateLimit.retryAfterSeconds,
-            cooldownSeconds:   rateLimit.cooldownSeconds,
-          }),
-        };
-      }
+    // Rate limiting is enforced in both mock and live mode — USE_MOCK_DATA
+    // only controls whether the real Stormglass API is called, not whether
+    // the cooldown applies.
+    const rateLimit = await checkRateLimit(db, 'tides', TIDES_COOLDOWN_SECONDS);
+    console.log('tides-button: rate-limit check →', JSON.stringify(rateLimit));
+    if (!rateLimit.allowed) {
+      console.log(`tides-button: blocked — retry in ${rateLimit.retryAfterSeconds}s`);
+      return {
+        statusCode: 429,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          success:           false,
+          rateLimited:       true,
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+          cooldownSeconds:   rateLimit.cooldownSeconds,
+        }),
+      };
     }
 
     // callAPI resolves to mock JSON or a live Stormglass response depending

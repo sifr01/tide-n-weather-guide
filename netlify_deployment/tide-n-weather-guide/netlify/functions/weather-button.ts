@@ -58,7 +58,7 @@ import {
   callAPI, STORMGLASS_BASE, LAT, LNG,
   WeatherHour, SolarHour, WeatherMeta, SolarMeta,
   WeatherResponse, SolarResponse,
-  toUnixSeconds, USE_MOCK_DATA,
+  toUnixSeconds,
 } from './APIcall';
 import { checkRateLimit } from './checkRateLimit';
 
@@ -100,21 +100,23 @@ export const handler: Handler = async () => {
     // called.  If it was less than WEATHER_COOLDOWN_SECONDS ago, return 429
     // immediately.  Weather and solar are always fetched together so a single
     // check keyed on 'weather' covers both.
-    // USE_MOCK_DATA bypasses the check so development is never blocked.
-    if (!USE_MOCK_DATA) {
-      const rateLimit = await checkRateLimit(db, 'weather', WEATHER_COOLDOWN_SECONDS);
-      if (!rateLimit.allowed) {
-        return {
-          statusCode: 429,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            success:           false,
-            rateLimited:       true,
-            retryAfterSeconds: rateLimit.retryAfterSeconds,
-            cooldownSeconds:   rateLimit.cooldownSeconds,
-          }),
-        };
-      }
+    // Rate limiting is enforced in both mock and live mode — USE_MOCK_DATA
+    // only controls whether the real Stormglass API is called, not whether
+    // the cooldown applies.
+    const rateLimit = await checkRateLimit(db, 'weather', WEATHER_COOLDOWN_SECONDS);
+    console.log('weather-button: rate-limit check →', JSON.stringify(rateLimit));
+    if (!rateLimit.allowed) {
+      console.log(`weather-button: blocked — retry in ${rateLimit.retryAfterSeconds}s`);
+      return {
+        statusCode: 429,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          success:           false,
+          rateLimited:       true,
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+          cooldownSeconds:   rateLimit.cooldownSeconds,
+        }),
+      };
     }
 
     // Make both API calls concurrently — mirrors the old fetchWeatherAndSolarData.js
