@@ -1,4 +1,4 @@
-import { bigint, numeric, pgEnum, pgTable, text, varchar } from 'drizzle-orm/pg-core';
+import { bigint, numeric, pgEnum, pgTable, pgView, text, varchar } from 'drizzle-orm/pg-core';
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -93,10 +93,80 @@ export const weather = pgTable('weather', {
     wind_speed_noaa:         numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed.noaa
     wind_speed_sg:           numeric({ precision: 5, scale: 2 }),    // source: hours[].windSpeed.sg
 
-    // --- uvIndex (dimensionless) -------------------------------------------
-    uv_index_noaa:           numeric({ precision: 4, scale: 2 }),    // source: hours[].uvIndex.noaa  (solar endpoint)
-    uv_index_sg:             numeric({ precision: 4, scale: 2 })     // source: hours[].uvIndex.sg    (solar endpoint)
+    // NOTE: uvIndex columns have been moved to the dedicated `solar` table.
+    // Use the `weatherSolarView` DB view to query weather + UV together.
 });
+
+// ---------------------------------------------------------------------------
+// solar
+// ---------------------------------------------------------------------------
+
+/**
+ * Stores hourly UV index data from the Stormglass /v2/solar/point endpoint.
+ * One row per UTC hour, aligned to the same time-series as `weather`.
+ *
+ * • time (Unix seconds, PK) — deduplication key; matches `weather.time` 1-to-1.
+ * • uv_index_noaa / uv_index_sg — dimensionless UV index from two forecast models.
+ *
+ * The table is flushed and re-populated alongside `weather` on each poll cycle.
+ */
+export const solar = pgTable('solar', {
+    time:          bigint({ mode: 'number' }).primaryKey(), // Unix epoch seconds – source: hours[].time
+    uv_index_noaa: numeric({ precision: 4, scale: 2 }),     // dimensionless – source: hours[].uvIndex.noaa
+    uv_index_sg:   numeric({ precision: 4, scale: 2 }),     // dimensionless – source: hours[].uvIndex.sg
+});
+
+// ---------------------------------------------------------------------------
+// weather_solar (DB view)
+// ---------------------------------------------------------------------------
+
+/**
+ * A read-only database view that joins `weather` and `solar` on `time`.
+ *
+ * Using a DB view rather than a JS merge shifts the join computation to the
+ * database engine and away from the application layer.  The application can
+ * query this view exactly like a table and receive a combined result set.
+ *
+ * Join type: LEFT JOIN — weather rows without a matching solar row are still
+ * returned (uv columns will be NULL for those hours).
+ *
+ * The view DDL is created and managed via migrations (not by Drizzle's
+ * schema-push). The `.existing()` call tells Drizzle to treat this as a
+ * reference to a view that already exists in the DB, so it never tries to
+ * generate CREATE VIEW statements or drop the view during migrations.
+ */
+export const weatherSolarView = pgView('weather_solar', {
+    // All columns from the `weather` table --------------------------------
+    time:                    bigint({ mode: 'number' }),          // Unix epoch seconds (join key)
+    gust_ecmwf:              numeric({ precision: 5, scale: 2 }),
+    gust_noaa:               numeric({ precision: 5, scale: 2 }),
+    gust_sg:                 numeric({ precision: 5, scale: 2 }),
+    pressure_ecmwf:          numeric({ precision: 6, scale: 2 }),
+    pressure_ecmwf_aifs:     numeric({ precision: 6, scale: 2 }),
+    pressure_noaa:           numeric({ precision: 6, scale: 2 }),
+    pressure_sg:             numeric({ precision: 6, scale: 2 }),
+    water_temp_meto:         numeric({ precision: 5, scale: 2 }),
+    water_temp_noaa:         numeric({ precision: 5, scale: 2 }),
+    water_temp_sg:           numeric({ precision: 5, scale: 2 }),
+    wave_height_dwd:         numeric({ precision: 5, scale: 2 }),
+    wave_height_ecmwf:       numeric({ precision: 5, scale: 2 }),
+    wave_height_meteo:       numeric({ precision: 5, scale: 2 }),
+    wave_height_noaa:        numeric({ precision: 5, scale: 2 }),
+    wave_height_sg:          numeric({ precision: 5, scale: 2 }),
+    wind_dir_dwd:            numeric({ precision: 5, scale: 2 }),
+    wind_dir_ecmwf:          numeric({ precision: 5, scale: 2 }),
+    wind_dir_ecmwf_aifs:     numeric({ precision: 5, scale: 2 }),
+    wind_dir_noaa:           numeric({ precision: 5, scale: 2 }),
+    wind_dir_sg:             numeric({ precision: 5, scale: 2 }),
+    wind_speed_dwd:          numeric({ precision: 5, scale: 2 }),
+    wind_speed_ecmwf:        numeric({ precision: 5, scale: 2 }),
+    wind_speed_ecmwf_aifs:   numeric({ precision: 5, scale: 2 }),
+    wind_speed_noaa:         numeric({ precision: 5, scale: 2 }),
+    wind_speed_sg:           numeric({ precision: 5, scale: 2 }),
+    // UV columns from the `solar` table (NULL when no solar row exists) ----
+    uv_index_noaa:           numeric({ precision: 4, scale: 2 }), // source: solar.uv_index_noaa
+    uv_index_sg:             numeric({ precision: 4, scale: 2 }), // source: solar.uv_index_sg
+}).existing(); // existing() = the view is managed by migrations, not by Drizzle schema-push
 
 // ---------------------------------------------------------------------------
 // metadata
