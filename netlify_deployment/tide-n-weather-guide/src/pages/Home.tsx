@@ -39,7 +39,7 @@ const Home: React.FC = () => (
 
       {/* Problem 3 */}
       <div className="problem-card">
-        <h3>🛠️ Showcasing skills for free</h3>
+        <h3>🛠️ Showcasing full-stack skills for free</h3>
         <p>
           Building and maintaining a personal portfolio site usually requires
           paying for a domain, hosting, and services.  This project demonstrates

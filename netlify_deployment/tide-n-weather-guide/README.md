@@ -27,7 +27,7 @@ Three problems, one solution:
 
 - **🌐 Hosting for free** — React frontend served as a static site on Netlify; all backend logic runs in serverless functions invoked on demand (no idle server cost).
 - **📡 API calls for free** — The [Stormglass](https://stormglass.io) marine API is rate-limited on the free tier. Data is fetched manually via a button press and cached in a PostgreSQL database, so every subsequent page load is served from the cache at zero API cost.
-- **🛠️ Showcasing skills for free** — Demonstrates a full-stack TypeScript project (React, Drizzle ORM, PostgreSQL, Netlify serverless functions) with no running cost.
+- **🛠️ Showcasing full-stack skills for free** — Demonstrates a full-stack TypeScript project (React, Drizzle ORM, PostgreSQL, Netlify serverless functions) with no running cost.
 
 ---
 
