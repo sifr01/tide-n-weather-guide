@@ -79,4 +79,4 @@ export interface GetDataResponse {
 // ---------------------------------------------------------------------------
 
 /** Union for any button that triggers an async Netlify function call. */
-export type ButtonStatus = 'idle' | 'loading' | 'success' | 'error';
+export type ButtonStatus = 'idle' | 'loading' | 'success' | 'error' | 'rate_limited';

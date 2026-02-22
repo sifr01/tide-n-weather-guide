@@ -144,6 +144,15 @@ body {
   color: #c53030;
 }
 
+/* Amber/warning colour — used when the rate limit is exceeded.
+   Distinct from error (red) because it is not an unexpected failure;
+   it is an expected temporary block with a known retry time. */
+.status-message.rate-limited {
+  background-color: #fffbeb;
+  color: #92400e;
+  border-left: 3px solid #f59e0b;
+}
+
 /* ---------------------------------------------------------------------------
    No-data placeholder
 --------------------------------------------------------------------------- */

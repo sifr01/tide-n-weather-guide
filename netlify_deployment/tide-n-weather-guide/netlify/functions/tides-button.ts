@@ -49,7 +49,15 @@ import { tides, metadata } from '../../src/db/schema';
 // Shared API module — owns the fetch logic, API key, GPS constants,
 // USE_MOCK_DATA flag, and all response type definitions.
 // ---------------------------------------------------------------------------
-import { callAPI, STORMGLASS_BASE, LAT, LNG, TidesResponse, toUnixSeconds } from './APIcall';
+import { callAPI, STORMGLASS_BASE, LAT, LNG, TidesResponse, toUnixSeconds, USE_MOCK_DATA } from './APIcall';
+import { checkRateLimit } from './checkRateLimit';
+
+// ---------------------------------------------------------------------------
+// Rate-limit cooldown — tides data only needs refreshing once per day.
+// The Stormglass daily quota is low, so enforcing this server-side protects
+// against accidental over-use.
+// ---------------------------------------------------------------------------
+const TIDES_COOLDOWN_SECONDS = 24 * 60 * 60; // 86 400 seconds = 1 day
 
 // ---------------------------------------------------------------------------
 // Time-window helpers
@@ -94,6 +102,27 @@ const db = drizzle(sqlClient);
 // ---------------------------------------------------------------------------
 export const handler: Handler = async () => {
   try {
+    // --- 0. Rate-limit check ------------------------------------------------
+    // Query the metadata table for the last time the tides endpoint was
+    // called.  If it was less than TIDES_COOLDOWN_SECONDS ago, return 429
+    // immediately without hitting the Stormglass API.
+    // USE_MOCK_DATA bypasses the check so development is never blocked.
+    if (!USE_MOCK_DATA) {
+      const rateLimit = await checkRateLimit(db, 'tides', TIDES_COOLDOWN_SECONDS);
+      if (!rateLimit.allowed) {
+        return {
+          statusCode: 429,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            success:           false,
+            rateLimited:       true,
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+            cooldownSeconds:   rateLimit.cooldownSeconds,
+          }),
+        };
+      }
+    }
+
     // callAPI resolves to mock JSON or a live Stormglass response depending
     // on the USE_MOCK_DATA flag inside APIcall.ts.
     const { data, meta } = await callAPI<TidesResponse>(TIDES_URL);
@@ -117,6 +146,7 @@ export const handler: Handler = async () => {
     // bigint columns.
     await db.insert(metadata).values({
       source:        'tides',
+      fetched_at:    Math.floor(Date.now() / 1000),  // wall-clock time of this API call
       cost:          String(meta.cost),
       request_start: toUnixSeconds(meta.start),
       daily_quota:   String(meta.dailyQuota),

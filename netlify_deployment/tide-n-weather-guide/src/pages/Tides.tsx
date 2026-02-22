@@ -72,6 +72,29 @@ function formatUnixTime(unixSeconds: number): {
 }
 
 // ---------------------------------------------------------------------------
+// Rate-limit message helper
+// Converts raw seconds into a human-readable "Xh Ym Zs" countdown string
+// and constructs the full message shown to the user when a 429 is returned.
+// ---------------------------------------------------------------------------
+function formatRateLimitMessage(retryAfterSeconds: number, cooldownSeconds: number): string {
+  const h = Math.floor(retryAfterSeconds / 3600);
+  const m = Math.floor((retryAfterSeconds % 3600) / 60);
+  const s = retryAfterSeconds % 60;
+
+  // Build a compact "Xh Ym Zs" string, omitting zero-value components
+  // (e.g. "1h 30m", "45m 10s", "30s").
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+  const countdown = parts.join(' ');
+
+  const cooldownHours = cooldownSeconds / 3600;
+  return `⏳ Tides data was already fetched within the last ${cooldownHours}h. ` +
+         `Next refresh available in ${countdown}.`;
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -92,6 +115,14 @@ const TidesPage: React.FC<TidesPageProps> = ({ tides, refetchTides }) => {
     try {
       const response = await fetch('/.netlify/functions/tides-button', { method: 'POST' });
       const data = await response.json();
+
+      // 429 — rate limit exceeded; the server tells us how long to wait.
+      if (response.status === 429 && data.rateLimited) {
+        setStatus('rate_limited');
+        setMessage(formatRateLimitMessage(data.retryAfterSeconds, data.cooldownSeconds));
+        return;
+      }
+
       if (response.ok && data.success) {
         // Re-fetch the updated tides rows from the DB so the table reflects
         // the newly inserted data immediately.
@@ -192,9 +223,15 @@ const TidesPage: React.FC<TidesPageProps> = ({ tides, refetchTides }) => {
         </button>
       </div>
 
-      {/* Status message shown below the button after a refresh attempt. */}
+      {/* Status message shown below the button after a refresh attempt.
+          'rate_limited' gets its own CSS class so it can be styled distinctly
+          (e.g. amber/warning colour rather than red error or green success). */}
       {message && (
-        <p className={`status-message ${status === 'error' ? 'error' : 'success'}`}>
+        <p className={`status-message ${
+          status === 'error'        ? 'error'        :
+          status === 'rate_limited' ? 'rate-limited' :
+          'success'
+        }`}>
           {message}
         </p>
       )}

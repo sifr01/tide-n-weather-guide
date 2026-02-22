@@ -72,6 +72,28 @@ const fmt = (value: string | null, decimals = 2): string =>
   value == null ? '–' : parseFloat(value).toFixed(decimals);
 
 // ---------------------------------------------------------------------------
+// Rate-limit message helper
+// Converts raw seconds into a human-readable "Xh Ym Zs" countdown string
+// and constructs the full message shown to the user when a 429 is returned.
+// ---------------------------------------------------------------------------
+function formatRateLimitMessage(retryAfterSeconds: number, cooldownSeconds: number): string {
+  const h = Math.floor(retryAfterSeconds / 3600);
+  const m = Math.floor((retryAfterSeconds % 3600) / 60);
+  const s = retryAfterSeconds % 60;
+
+  // Build a compact "Xh Ym Zs" string, omitting zero-value components.
+  const parts: string[] = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+  const countdown = parts.join(' ');
+
+  const cooldownHours = cooldownSeconds / 3600;
+  return `⏳ Weather data was already fetched within the last ${cooldownHours}h. ` +
+         `Next refresh available in ${countdown}.`;
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -92,6 +114,14 @@ const WeatherPage: React.FC<WeatherPageProps> = ({ weatherSolar, refetchWeatherS
     try {
       const response = await fetch('/.netlify/functions/weather-button', { method: 'POST' });
       const data = await response.json();
+
+      // 429 — rate limit exceeded; the server tells us how long to wait.
+      if (response.status === 429 && data.rateLimited) {
+        setStatus('rate_limited');
+        setMessage(formatRateLimitMessage(data.retryAfterSeconds, data.cooldownSeconds));
+        return;
+      }
+
       if (response.ok && data.success) {
         // Re-fetch the updated weatherSolar rows from the DB so the table
         // reflects the newly inserted data immediately.
@@ -207,7 +237,11 @@ const WeatherPage: React.FC<WeatherPageProps> = ({ weatherSolar, refetchWeatherS
       </div>
 
       {message && (
-        <p className={`status-message ${status === 'error' ? 'error' : 'success'}`}>
+        <p className={`status-message ${
+          status === 'error'        ? 'error'        :
+          status === 'rate_limited' ? 'rate-limited' :
+          'success'
+        }`}>
           {message}
         </p>
       )}

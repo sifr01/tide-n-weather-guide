@@ -202,6 +202,12 @@ export const metadata = pgTable('metadata', {
     id:               bigint({ mode: 'number' }).primaryKey().generatedAlwaysAsIdentity(),
     source:           metaSourceEnum().notNull(),              // 'tides' | 'weather' | 'solar'
 
+    // Wall-clock time at which this row was inserted (i.e. when the API call
+    // was actually made).  Used by the rate-limit check in checkRateLimit.ts
+    // to determine whether enough time has elapsed since the last call.
+    // Distinct from request_start, which is the start of the forecast window.
+    fetched_at:       bigint({ mode: 'number' }).notNull(),    // Unix epoch seconds – set to Date.now()/1000 at insert time
+
     // --- common fields (present in all three endpoints) --------------------
     cost:             numeric({ precision: 2, scale: 0 }),    // source: meta.cost
     request_start:    bigint({ mode: 'number' }),              // source: meta.start  (Unix epoch seconds, converted from "YYYY-MM-DD HH:MM" UTC)

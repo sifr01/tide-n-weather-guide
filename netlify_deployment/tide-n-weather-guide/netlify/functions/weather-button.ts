@@ -58,8 +58,16 @@ import {
   callAPI, STORMGLASS_BASE, LAT, LNG,
   WeatherHour, SolarHour, WeatherMeta, SolarMeta,
   WeatherResponse, SolarResponse,
-  toUnixSeconds,
+  toUnixSeconds, USE_MOCK_DATA,
 } from './APIcall';
+import { checkRateLimit } from './checkRateLimit';
+
+// ---------------------------------------------------------------------------
+// Rate-limit cooldown — weather + solar are called together and share one
+// rate-limit check (keyed on 'weather').  6 hours matches the typical
+// Stormglass hourly-forecast update cadence.
+// ---------------------------------------------------------------------------
+const WEATHER_COOLDOWN_SECONDS = 6 * 60 * 60; // 21 600 seconds = 6 hours
 
 // ---------------------------------------------------------------------------
 // Endpoint URLs — weather and solar are called in parallel on each invocation.
@@ -87,6 +95,28 @@ const db = drizzle(sqlClient);
 // ---------------------------------------------------------------------------
 export const handler: Handler = async () => {
   try {
+    // --- 0. Rate-limit check ------------------------------------------------
+    // Query the metadata table for the last time the weather endpoint was
+    // called.  If it was less than WEATHER_COOLDOWN_SECONDS ago, return 429
+    // immediately.  Weather and solar are always fetched together so a single
+    // check keyed on 'weather' covers both.
+    // USE_MOCK_DATA bypasses the check so development is never blocked.
+    if (!USE_MOCK_DATA) {
+      const rateLimit = await checkRateLimit(db, 'weather', WEATHER_COOLDOWN_SECONDS);
+      if (!rateLimit.allowed) {
+        return {
+          statusCode: 429,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            success:           false,
+            rateLimited:       true,
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+            cooldownSeconds:   rateLimit.cooldownSeconds,
+          }),
+        };
+      }
+    }
+
     // Make both API calls concurrently — mirrors the old fetchWeatherAndSolarData.js
     // pattern.  callAPI() resolves to mock JSON or a live Stormglass response
     // depending on the USE_MOCK_DATA flag inside APIcall.ts.
@@ -186,9 +216,13 @@ export const handler: Handler = async () => {
     // meta.start / meta.end arrive as 'YYYY-MM-DD HH:MM' — toUnixSeconds()
     // converts them to Unix epoch seconds for the bigint columns.
     // meta.params is an array; join to a comma-separated string for `parameters`.
+    // fetched_at is the wall-clock time of this invocation, used by the
+    // rate-limit check on subsequent calls.
+    const fetchedAt = Math.floor(Date.now() / 1000);  // wall-clock time of this API call
 
     await db.insert(metadata).values({
       source:        'weather',
+      fetched_at:    fetchedAt,
       cost:          String(weatherMeta.cost),
       request_start: toUnixSeconds(weatherMeta.start),
       request_end:   toUnixSeconds(weatherMeta.end),
@@ -199,6 +233,7 @@ export const handler: Handler = async () => {
 
     await db.insert(metadata).values({
       source:        'solar',
+      fetched_at:    fetchedAt,   // same wall-clock instant as the weather row
       cost:          String(solarMeta.cost),
       request_start: toUnixSeconds(solarMeta.start),
       request_end:   toUnixSeconds(solarMeta.end),
