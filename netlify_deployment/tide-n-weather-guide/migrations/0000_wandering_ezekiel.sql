@@ -17,6 +17,12 @@ CREATE TABLE "metadata" (
 	"parameters" text
 );
 --> statement-breakpoint
+CREATE TABLE "solar" (
+	"time" bigint PRIMARY KEY NOT NULL,
+	"uv_index_noaa" numeric(4, 2),
+	"uv_index_sg" numeric(4, 2)
+);
+--> statement-breakpoint
 CREATE TABLE "tides" (
 	"time" bigint PRIMARY KEY NOT NULL,
 	"height" numeric(18, 15) NOT NULL,
@@ -49,7 +55,5 @@ CREATE TABLE "weather" (
 	"wind_speed_ecmwf" numeric(5, 2),
 	"wind_speed_ecmwf_aifs" numeric(5, 2),
 	"wind_speed_noaa" numeric(5, 2),
-	"wind_speed_sg" numeric(5, 2),
-	"uv_index_noaa" numeric(4, 2),
-	"uv_index_sg" numeric(4, 2)
+	"wind_speed_sg" numeric(5, 2)
 );
