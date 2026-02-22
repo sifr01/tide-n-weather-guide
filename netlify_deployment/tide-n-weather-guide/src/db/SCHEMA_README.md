@@ -12,14 +12,17 @@
 4. [Table Reference](#table-reference)
    - [tides](#tides)
    - [weather](#weather)
+   - [solar](#solar)
    - [metadata](#metadata)
-5. [Data Mapping Tables](#data-mapping-tables)
+5. [View Reference](#view-reference)
+   - [weather_solar](#weather_solar)
+6. [Data Mapping Tables](#data-mapping-tables)
    - [tides — JSON → DB](#tides--json--db)
    - [weather — JSON → DB](#weather--json--db)
-   - [solar → weather — JSON → DB](#solar--weather--json--db)
+   - [solar — JSON → DB](#solar--json--db)
    - [metadata — JSON → DB (all endpoints)](#metadata--json--db-all-endpoints)
-6. [Enums](#enums)
-7. [API Poll Cycle](#api-poll-cycle)
+7. [Enums](#enums)
+8. [API Poll Cycle](#api-poll-cycle)
 
 ---
 
@@ -31,9 +34,12 @@ Three Stormglass API endpoints feed the database:
 |---|---|---|
 | Tidal extremes | `/v2/tide/extremes/point` | `tides`, `metadata` |
 | Hourly weather | `/v2/weather/point` | `weather`, `metadata` |
-| Hourly solar / UV | `/v2/solar/point` | `weather` (merged), `metadata` |
+| Hourly solar / UV | `/v2/solar/point` | `solar`, `metadata` |
 
-Solar data is **merged into the `weather` table** on the `time` primary key, because both endpoints produce one row per UTC hour and share the same time-series granularity.
+Solar data is stored in its own **`solar`** table (one row per UTC hour).
+The `weather` and `solar` tables share the same time-series granularity and
+are joined at the database level via the **`weather_solar` view** (LEFT JOIN on
+`time`). The application no longer merges the two responses in JavaScript.
 
 ---
 
@@ -41,14 +47,16 @@ Solar data is **merged into the `weather` table** on the `time` primary key, bec
 
 | Decision | Rationale |
 |---|---|
-| **Unix epoch (bigint) as PKs for `tides` and `weather`** | Natural deduplication key: re-inserting the same API window is idempotent with `ON CONFLICT DO NOTHING`. No synthetic surrogate needed. |
-| **`tides` and `weather` are flushed on each poll** | The API returns a rolling forecast window; stale forecasts are replaced entirely. A truncate + bulk insert is simpler and faster than row-level upserts. |
+| **Unix epoch (bigint) as PKs for `tides`, `weather`, and `solar`** | Natural deduplication key: re-inserting the same API window is idempotent with `ON CONFLICT DO NOTHING`. No synthetic surrogate needed. |
+| **`tides`, `weather`, and `solar` are flushed on each poll** | The API returns a rolling forecast window; stale forecasts are replaced entirely. A truncate + bulk insert is simpler and faster than row-level upserts. |
 | **`metadata` is append-only** | Provides an audit trail of every API call (cost, quota usage, timestamps). Rows are never deleted. |
+| **`solar` is a separate table (not merged into `weather`)** | Keeps each API response in its own table; the join is expressed as a DB view (`weather_solar`) so the computation lives in the database, not in application JS. |
+| **`weather_solar` DB view performs the JOIN** | Shifts the join computation to the database engine. The application queries the view like a plain table and receives already-joined rows. |
 | **`tide_type` enum ('high' \| 'low')** | Enforces data integrity at the DB level; avoids silent insertion of invalid strings. |
 | **`meta_source` enum ('tides' \| 'weather' \| 'solar')** | Allows a single `metadata` table to record meta from all three endpoints while still being queryable by source. |
 | **`real` (float4) for weather/solar measurements** | Single-precision is sufficient for the decimal precision returned by the API (2–4 significant figures) and uses half the storage of `double precision`. |
 | **`numeric(7,4)` for tide height** | Tide heights in the sample range from ~−1.4 m to ~+1.5 m with 4 decimal places; `numeric` avoids float rounding for a value that may drive business logic. |
-| **All weather measurement columns nullable** | Not every source model supplies every parameter for every hour (evidenced in the API samples). `NOT NULL` would cause insertions to fail for sparse rows. |
+| **All weather and solar measurement columns nullable** | Not every source model supplies every parameter for every hour (evidenced in the API samples). `NOT NULL` would cause insertions to fail for sparse rows. |
 | **`ecmwf:aifs` stored as `ecmwf_aifs`** | Colons are not valid in SQL identifiers; `_` is the conventional replacement. |
 | **`station.distance` omitted from metadata** | Per spec — the API always returns `0` for a point query. |
 | **`meta.lat` / `meta.lng` omitted from metadata** | Per spec — these always equal `station_lat` / `station_lon`; storing them would be redundant. |
@@ -93,8 +101,43 @@ erDiagram
             REAL wind_speed_ecmwf_aifs
             REAL wind_speed_noaa
             REAL wind_speed_sg
+      }
+
+      SOLAR {
+            BIGINT time PK "Unix epoch sec"
             REAL uv_index_noaa
             REAL uv_index_sg
+      }
+
+      WEATHER_SOLAR_VIEW {
+            BIGINT time "join key (LEFT JOIN)"
+            REAL gust_ecmwf
+            REAL gust_noaa
+            REAL gust_sg
+            REAL pressure_ecmwf
+            REAL pressure_ecmwf_aifs
+            REAL pressure_noaa
+            REAL pressure_sg
+            REAL water_temp_meto
+            REAL water_temp_noaa
+            REAL water_temp_sg
+            REAL wave_height_dwd
+            REAL wave_height_ecmwf
+            REAL wave_height_meteo
+            REAL wave_height_noaa
+            REAL wave_height_sg
+            REAL wind_dir_dwd
+            REAL wind_dir_ecmwf
+            REAL wind_dir_ecmwf_aifs
+            REAL wind_dir_noaa
+            REAL wind_dir_sg
+            REAL wind_speed_dwd
+            REAL wind_speed_ecmwf
+            REAL wind_speed_ecmwf_aifs
+            REAL wind_speed_noaa
+            REAL wind_speed_sg
+            REAL uv_index_noaa "from SOLAR"
+            REAL uv_index_sg "from SOLAR"
       }
 
       METADATA {
@@ -114,6 +157,7 @@ erDiagram
             TEXT parameters
       }
 
+      WEATHER ||--o| SOLAR : "LEFT JOIN on time (via weather_solar view)"
       %% No FK relationships — metadata is an audit log
 ```
 
@@ -135,7 +179,7 @@ Stores discrete tidal extreme events (high water / low water).
 
 ### weather
 
-One row per UTC hour. Combines the weather-point and solar-point responses on `time`.
+One row per UTC hour from `/v2/weather/point`. Contains only weather parameters — UV index has been moved to the dedicated [`solar`](#solar) table.
 
 | Column | Type | Nullable | Source parameter |
 |---|---|---|---|
@@ -165,8 +209,42 @@ One row per UTC hour. Combines the weather-point and solar-point responses on `t
 | `wind_speed_ecmwf_aifs` | `REAL` | YES | `windSpeed['ecmwf:aifs']` |
 | `wind_speed_noaa` | `REAL` | YES | `windSpeed.noaa` |
 | `wind_speed_sg` | `REAL` | YES | `windSpeed.sg` |
-| `uv_index_noaa` | `REAL` | YES | `uvIndex.noaa` *(solar endpoint)* |
-| `uv_index_sg` | `REAL` | YES | `uvIndex.sg` *(solar endpoint)* |
+
+> UV index columns (`uv_index_noaa`, `uv_index_sg`) were removed from this table and now live in [`solar`](#solar). Query them via the [`weather_solar`](#weather_solar) view.
+
+---
+
+### solar
+
+One row per UTC hour from `/v2/solar/point`. Aligned with `weather` on `time`.
+
+| Column | Type | Nullable | Source parameter |
+|---|---|---|---|
+| `time` | `BIGINT` | NO — PK | `hours[].time` (converted to Unix epoch) |
+| `uv_index_noaa` | `NUMERIC(4,2)` | YES | `uvIndex.noaa` |
+| `uv_index_sg` | `NUMERIC(4,2)` | YES | `uvIndex.sg` |
+
+---
+
+## View Reference
+
+### weather_solar
+
+A read-only view that LEFT JOINs `weather` and `solar` on `time`. The application queries this view to obtain fully combined hourly data without any JavaScript-side merging.
+
+```sql
+SELECT w.*, s.uv_index_noaa, s.uv_index_sg
+FROM weather w
+LEFT JOIN solar s ON s.time = w.time;
+```
+
+| Column | Source |
+|---|---|
+| All `weather` columns | `weather` table |
+| `uv_index_noaa` | `solar` table (NULL if no matching solar row) |
+| `uv_index_sg` | `solar` table (NULL if no matching solar row) |
+
+> Managed by migration `0001_solar_table_and_view.sql`. Drizzle references it via `.existing()` so schema-push never recreates or drops it.
 
 ---
 
@@ -242,14 +320,14 @@ Source: `hours[]` array from `/v2/weather/point`
 
 ---
 
-### solar → weather — JSON → DB
+### solar — JSON → DB
 
-Source: `hours[]` array from `/v2/solar/point`  
-Merged into `weather` by matching on `time` (Unix epoch seconds).
+Source: `hours[]` array from `/v2/solar/point`
+Inserted directly into the `solar` table. The join with `weather` is performed by the `weather_solar` DB view — no JavaScript merging.
 
 | JSON key path | DB column | Notes |
 |---|---|---|
-| `hours[i].time` | `time` | ISO 8601 → Unix epoch — join key |
+| `hours[i].time` | `time` | ISO 8601 → Unix epoch (seconds) — PK and join key |
 | `hours[i].uvIndex.noaa` | `uv_index_noaa` | dimensionless |
 | `hours[i].uvIndex.sg` | `uv_index_sg` | dimensionless |
 
@@ -314,13 +392,20 @@ Merged into `weather` by matching on `time` (Unix epoch seconds).
    tides API        weather API      solar API
          │               │               │
          ▼               ▼               ▼
-  TRUNCATE tides   TRUNCATE weather  merge into
-  INSERT tides     INSERT weather    weather rows
+  TRUNCATE tides   TRUNCATE weather  TRUNCATE solar
+  INSERT tides     INSERT weather    INSERT solar
          │               │               │
          ▼               ▼               ▼
   INSERT metadata  INSERT metadata  INSERT metadata
   (source='tides') (source='weather')(source='solar')
+                         │               │
+                         └───────┬───────┘
+                                 ▼
+                        weather_solar VIEW
+                     (DB-level LEFT JOIN on time)
+                     queried by app at read time
 ```
 
-- `tides` and `weather` are **flushed** (TRUNCATE) before each repopulation.  
+- `tides`, `weather`, and `solar` are **flushed** (TRUNCATE) before each repopulation.
 - `metadata` is **never truncated** — rows accumulate as an audit trail.
+- The join between `weather` and `solar` is expressed as a **database view** (`weather_solar`), not JavaScript code.
