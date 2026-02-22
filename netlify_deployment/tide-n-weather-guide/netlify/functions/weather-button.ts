@@ -14,6 +14,10 @@
 //   4. Bulk-INSERT solar rows into `solar`
 //   5. Append one row to `metadata` per source — source='weather' and
 //      source='solar' — as an append-only audit log
+//
+// The join between weather and solar data is now performed by the database
+// via the `weather_solar` view (LEFT JOIN weather ON solar.time = weather.time).
+// This removes the JS merge step and shifts computation to the DB layer.
 
 // ---------------------------------------------------------------------------
 // Minimal inline types — avoids a hard dependency on @netlify/functions at
@@ -43,7 +47,7 @@ type Handler = (event: HandlerEvent, context: HandlerContext) => Promise<Handler
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql as drizzleSql } from 'drizzle-orm';
-import { weather, metadata } from '../../src/db/schema';
+import { weather, solar, metadata } from '../../src/db/schema';
 
 // ---------------------------------------------------------------------------
 // Shared helper — convert a Stormglass 'YYYY-MM-DD HH:MM' timestamp string
@@ -164,63 +168,81 @@ export const handler: Handler = async () => {
     // represent the same forecast window.
     await db.execute(drizzleSql`TRUNCATE TABLE solar`);
 
-    // --- 3. Map weather hours → DB rows, merging solar uvIndex on time -------
-    // Both APIs share the same UTC hourly cadence so every weather row should
-    // have a matching solar entry; if one is absent the uv columns stay null.
+    // --- 3. Map weather hours → DB rows and insert into `weather` ---------
+    //
+    // Drizzle maps `numeric` columns to TypeScript `string` (not `number`) to
+    // preserve decimal precision without floating-point rounding.  We therefore
+    // convert every API number to a fixed-point string before insertion.
+    // numberToString() wraps that conversion and passes null through unchanged.
+    const numberToString = (APIresponseValue: number | undefined | null): string | null =>
+      APIresponseValue == null ? null : String(APIresponseValue);
+
     const weatherRows = weatherHours.map((hour) => {
       const unixSec = Math.floor(new Date(hour.time).getTime() / 1000);
-      const uv = solarByTime.get(unixSec) ?? {};
 
       return {
         time: unixSec,
 
         // gust (m/s) — source: hours[i].gust.<model>
-        gust_ecmwf: hour.gust?.ecmwf            ?? null,
-        gust_noaa:  hour.gust?.noaa             ?? null,
-        gust_sg:    hour.gust?.sg               ?? null,
+        gust_ecmwf: numberToString(hour.gust?.ecmwf),
+        gust_noaa:  numberToString(hour.gust?.noaa),
+        gust_sg:    numberToString(hour.gust?.sg),
 
         // pressure (hPa) — source: hours[i].pressure.<model>
         // 'ecmwf:aifs' key uses bracket notation; stored as ecmwf_aifs
-        pressure_ecmwf:      hour.pressure?.ecmwf              ?? null,
-        pressure_ecmwf_aifs: hour.pressure?.['ecmwf:aifs']     ?? null,
-        pressure_noaa:       hour.pressure?.noaa               ?? null,
-        pressure_sg:         hour.pressure?.sg                 ?? null,
+        pressure_ecmwf:      numberToString(hour.pressure?.ecmwf),
+        pressure_ecmwf_aifs: numberToString(hour.pressure?.['ecmwf:aifs']),
+        pressure_noaa:       numberToString(hour.pressure?.noaa),
+        pressure_sg:         numberToString(hour.pressure?.sg),
 
         // waterTemperature (°C) — source: hours[i].waterTemperature.<model>
-        water_temp_meto: hour.waterTemperature?.meto ?? null,
-        water_temp_noaa: hour.waterTemperature?.noaa ?? null,
-        water_temp_sg:   hour.waterTemperature?.sg   ?? null,
+        water_temp_meto: numberToString(hour.waterTemperature?.meto),
+        water_temp_noaa: numberToString(hour.waterTemperature?.noaa),
+        water_temp_sg:   numberToString(hour.waterTemperature?.sg),
 
         // waveHeight (m) — source: hours[i].waveHeight.<model>
-        wave_height_dwd:   hour.waveHeight?.dwd   ?? null,
-        wave_height_ecmwf: hour.waveHeight?.ecmwf ?? null,
-        wave_height_meteo: hour.waveHeight?.meteo ?? null,
-        wave_height_noaa:  hour.waveHeight?.noaa  ?? null,
-        wave_height_sg:    hour.waveHeight?.sg    ?? null,
+        wave_height_dwd:   numberToString(hour.waveHeight?.dwd),
+        wave_height_ecmwf: numberToString(hour.waveHeight?.ecmwf),
+        wave_height_meteo: numberToString(hour.waveHeight?.meteo),
+        wave_height_noaa:  numberToString(hour.waveHeight?.noaa),
+        wave_height_sg:    numberToString(hour.waveHeight?.sg),
 
         // windDirection (degrees true) — source: hours[i].windDirection.<model>
-        wind_dir_dwd:        hour.windDirection?.dwd            ?? null,
-        wind_dir_ecmwf:      hour.windDirection?.ecmwf          ?? null,
-        wind_dir_ecmwf_aifs: hour.windDirection?.['ecmwf:aifs'] ?? null,
-        wind_dir_noaa:       hour.windDirection?.noaa           ?? null,
-        wind_dir_sg:         hour.windDirection?.sg             ?? null,
+        wind_dir_dwd:        numberToString(hour.windDirection?.dwd),
+        wind_dir_ecmwf:      numberToString(hour.windDirection?.ecmwf),
+        wind_dir_ecmwf_aifs: numberToString(hour.windDirection?.['ecmwf:aifs']),
+        wind_dir_noaa:       numberToString(hour.windDirection?.noaa),
+        wind_dir_sg:         numberToString(hour.windDirection?.sg),
 
         // windSpeed (m/s) — source: hours[i].windSpeed.<model>
-        wind_speed_dwd:        hour.windSpeed?.dwd            ?? null,
-        wind_speed_ecmwf:      hour.windSpeed?.ecmwf          ?? null,
-        wind_speed_ecmwf_aifs: hour.windSpeed?.['ecmwf:aifs'] ?? null,
-        wind_speed_noaa:       hour.windSpeed?.noaa           ?? null,
-        wind_speed_sg:         hour.windSpeed?.sg             ?? null,
-
-        // uvIndex (dimensionless) — merged from solar response on matching time
-        uv_index_noaa: uv.noaa ?? null,
-        uv_index_sg:   uv.sg   ?? null,
+        wind_speed_dwd:        numberToString(hour.windSpeed?.dwd),
+        wind_speed_ecmwf:      numberToString(hour.windSpeed?.ecmwf),
+        wind_speed_ecmwf_aifs: numberToString(hour.windSpeed?.['ecmwf:aifs']),
+        wind_speed_noaa:       numberToString(hour.windSpeed?.noaa),
+        wind_speed_sg:         numberToString(hour.windSpeed?.sg),
       };
     });
 
     await db.insert(weather).values(weatherRows).onConflictDoNothing();
 
-    // --- 4. Append metadata audit rows (one per source) ---------------------
+    // --- 4. Map solar hours → DB rows and insert into `solar` --------------
+    // Each solar hour maps directly to one row in the `solar` table.
+    // The `weather_solar` DB view will later join these rows to `weather`
+    // on the `time` column, replacing the former JS-side merge.
+    const solarRows = solarHours.map((hour) => {
+      const unixSec = Math.floor(new Date(hour.time).getTime() / 1000);
+
+      return {
+        time:          unixSec,
+        // uvIndex (dimensionless) — source: hours[i].uvIndex.<model>
+        uv_index_noaa: numberToString(hour.uvIndex?.noaa),
+        uv_index_sg:   numberToString(hour.uvIndex?.sg),
+      };
+    });
+
+    await db.insert(solar).values(solarRows).onConflictDoNothing();
+
+    // --- 5. Append metadata audit rows (one per source) ---------------------
     // meta.start / meta.end arrive as 'YYYY-MM-DD HH:MM' — toUnixSeconds()
     // converts them to Unix epoch seconds for the bigint columns.
     // meta.params is an array; join to a comma-separated string for `parameters`.
@@ -249,8 +271,9 @@ export const handler: Handler = async () => {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        success:      true,
-        rowsInserted: weatherRows.length,
+        success:             true,
+        weatherRowsInserted: weatherRows.length,
+        solarRowsInserted:   solarRows.length,
         meta: {
           start: weatherMeta.start,
           end:   weatherMeta.end,
@@ -265,7 +288,7 @@ export const handler: Handler = async () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         success: false,
-        error:   error instanceof Error ? error.message : 'Failed to populate weather table',
+        error:   error instanceof Error ? error.message : 'Failed to populate weather/solar tables',
       }),
     };
   }
