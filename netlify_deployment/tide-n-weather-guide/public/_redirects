@@ -1,0 +1,4 @@
+# Netlify redirect rules
+# Serve index.html for all paths so the React Router (BrowserRouter)
+# can handle client-side routes (prevents 404s on refresh for /tides, /weather, etc.).
+/*    /index.html   200

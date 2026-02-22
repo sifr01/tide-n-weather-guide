@@ -184,7 +184,12 @@ body {
 /* Column headers — sticky so they remain visible when scrolling vertically */
 .data-table thead th {
   position: sticky;
-  top: 48px;                 /* height of .app-nav; keeps headers below the nav */
+  /*
+    Keep the table headers below the sticky navigation and the page
+    header. Use CSS variables above so the offsets are easy to tweak.
+  */
+  /* Place the table header immediately below the sticky nav. */
+  top: 0px;
   background-color: #2d3748;
   color: #e2e8f0;
   padding: 0.6rem 0.8rem;
@@ -207,7 +212,8 @@ body {
   padding: 0.5rem 0.8rem;
   /* Sticky so the date label stays in view while scrolling through that day */
   position: sticky;
-  top: 96px;                 /* nav (48px) + thead (48px) */
+  /* Place the date header directly beneath the sticky table header */
+  top: 0px;
   z-index: 9;
 }
 

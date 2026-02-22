@@ -18,5 +18,3 @@ server/.data
 
 data.json
 text.json
-# Local Netlify folder
-.netlify
